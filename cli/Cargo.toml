@@ -1,0 +1,16 @@
+[package]
+name = "rused-cli"
+version = "0.1.0"
+authors = ["Lukas Krickl <lukas@krickl.dev>"]
+description = "rused"
+license = "MIT"
+homepage = "https://github.com/unlink2/rused"
+edition = "2018"
+
+[[bin]]
+name = "rused"
+path = "src/main.rs"
+
+[dependencies]
+rused = {path = "../lib"}
+clap = "3.0.0-beta.2"
