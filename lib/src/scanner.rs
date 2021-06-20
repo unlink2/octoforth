@@ -1,5 +1,6 @@
 use super::error::*;
 use super::token::{Token, TokenType};
+use super::object::Object;
 
 pub struct Scanner {
     source: String,
@@ -51,6 +52,7 @@ impl Scanner {
                 self.line += 1;
                 Token::new(
                     TokenType::EndOfCommand,
+                    Object::Nil,
                     "\n",
                     self.line,
                     self.start,
@@ -59,6 +61,7 @@ impl Scanner {
             ';' => {
                 Token::new(
                     TokenType::EndOfCommand,
+                    Object::Nil,
                     ";",
                     self.line,
                     self.start,
@@ -67,6 +70,7 @@ impl Scanner {
             ',' =>
                 Token::new(
                     TokenType::Comma,
+                    Object::Nil,
                     ",",
                     self.line,
                     self.start,
@@ -87,6 +91,7 @@ impl Scanner {
                             ErrorType::InvalidToken,
                                 Token::new(
                                 TokenType::Invalid,
+                                Object::Nil,
                                 "",
                                 self.line,
                                 self.start,
@@ -117,6 +122,7 @@ impl Scanner {
                         ErrorType::UnterminatedRegex,
                         Token::new(
                             TokenType::Invalid,
+                            Object::Nil,
                             "",
                             self.line,
                             self.start,
@@ -128,13 +134,37 @@ impl Scanner {
 
         let unescaped = Scanner::unescape(self.source[self.start+1..self.current-1].to_string());
 
-        return Ok(Token::new(TokenType::Regex, &unescaped, self.line, self.start, &self.path));
+        return Ok(Token::new(
+                TokenType::Regex,
+                Object::Regex(unescaped.clone()),
+                &unescaped,
+                self.line,
+                self.start,
+                &self.path));
     }
 
     fn scan_number(&mut self, c: char) -> BoxResult<Token> {
+        // decide if it is hex, binary or decimal
+        if c == '0' && self.peek() == 'x' {
+            self.scan_hex(c)
+        } else if c == '0' && self.peek() == 'b' {
+            self.scan_bin(c)
+        } else {
+            self.scan_dec(c)
+        }
+    }
+
+    fn scan_hex(&mut self, c: char) -> BoxResult<Token> {
         panic!();
     }
 
+    fn scan_bin(&mut self, c: char) -> BoxResult<Token> {
+        panic!();
+    }
+
+    fn scan_dec(&mut self, c: char) -> BoxResult<Token> {
+        panic!();
+    }
 
     fn peek(&self) -> char {
         self.source.chars().nth(self.current).unwrap_or('\0')
