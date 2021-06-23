@@ -11,8 +11,9 @@ pub enum MaybeErrors<T> {
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum ErrorType {
     InvalidToken,
-    UnterminatedRegex,
-    BadNumber
+    UnterminatedString,
+    BadNumber,
+    NumberParseError
 }
 
 pub struct ExecError {

@@ -1,15 +1,19 @@
 use super::object::Object;
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
     Invalid,
-    EndOfCommand,
-    Eof,
-    Comma,
-    Slash,
-    Regex,
-    Number
+    Number,
+    Real,
+    Str,
+    RParen,
+    LParen,
+    Atom,
+    EndOfFile,
+    Quote
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: Object,

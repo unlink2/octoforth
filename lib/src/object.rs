@@ -1,6 +1,14 @@
-#[derive(PartialEq, Eq, Clone)]
+pub type ObjStr = String;
+pub type ObjNumber = i64;
+pub type ObjReal = f64;
+pub type ObjList = Vec<Object>;
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Object {
     Nil,
-    Number(i64),
-    Regex(String)
+    Number(ObjNumber),
+    Real(ObjReal),
+    Str(ObjStr),
+    List(ObjList),
+    Atom(ObjStr)
 }

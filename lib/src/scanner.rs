@@ -1,6 +1,6 @@
 use super::error::*;
 use super::token::{Token, TokenType};
-use super::object::Object;
+use super::object::*;
 
 pub struct Scanner {
     source: String,
@@ -50,52 +50,81 @@ impl Scanner {
             ' ' | '\r' => return Ok(None),
             '\n' => {
                 self.line += 1;
+                return Ok(None);
+            },
+            '\'' => {
                 Token::new(
-                    TokenType::EndOfCommand,
+                    TokenType::Quote,
                     Object::Nil,
-                    "\n",
+                    "'",
                     self.line,
                     self.start,
                     &self.path)
             },
-            ';' => {
-                Token::new(
-                    TokenType::EndOfCommand,
-                    Object::Nil,
-                    ";",
-                    self.line,
-                    self.start,
-                    &self.path)
-            },
-            ',' =>
-                Token::new(
-                    TokenType::Comma,
-                    Object::Nil,
-                    ",",
-                    self.line,
-                    self.start,
-                    &self.path),
-            '/' => match self.scan_regex(c) {
+            '"' => match self.scan_str(c) {
                 Ok(token) => token,
                 Err(err) => return Err(err)
             },
+            '(' => {
+                Token::new(
+                    TokenType::LParen,
+                    Object::Nil,
+                    "(",
+                    self.line,
+                    self.start,
+                    &self.path)
+            },
+            ')' => {
+                Token::new(
+                    TokenType::RParen,
+                    Object::Nil,
+                    "(",
+                    self.line,
+                    self.start,
+                    &self.path)
+            },
+            '\0' => {
+                Token::new(
+                    TokenType::EndOfFile,
+                    Object::Nil,
+                    "(",
+                    self.line,
+                    self.start,
+                    &self.path)
+            },
             _ => {
+                // TODO use pattern range in the future?
                 if Self::is_digit(c) {
                     match self.scan_number(c) {
                         Ok(token) => token,
                         Err(err) => return Err(err)
                     }
+                } else if Self::is_alpha(c) {
+                    // any named token
+                    while Scanner::is_alpha_numeric(self.peek()) {
+                        self.advance();
+                    }
+                    let atom = self.source[self.start..self.current]
+                        .to_string()
+                        .clone();
+                    Token::new(
+                        TokenType::Atom,
+                        Object::Atom(atom.clone()),
+                        &atom,
+                        self.line,
+                        self.start,
+                        &self.path)
                 } else {
                     return Err(Box::new(
-                        ExecError::new(
-                            ErrorType::InvalidToken,
+                            ExecError::new(
+                                ErrorType::InvalidToken,
                                 Token::new(
-                                TokenType::Invalid,
-                                Object::Nil,
-                                "",
-                                self.line,
-                                self.start,
-                                &self.path))));
+                                    TokenType::Invalid,
+                                    Object::Nil,
+                                    "",
+                                    self.line,
+                                    self.start,
+                                    &self.path))));
                 }
             }
         };
@@ -103,7 +132,7 @@ impl Scanner {
         return Ok(Some(token));
     }
 
-    fn scan_regex(&mut self, quote: char) -> BoxResult<Token> {
+    fn scan_str(&mut self, quote: char) -> BoxResult<Token> {
         while self.peek() != quote && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
@@ -119,7 +148,7 @@ impl Scanner {
         if self.is_at_end() {
             return Err(Box::new(
                     ExecError::new(
-                        ErrorType::UnterminatedRegex,
+                        ErrorType::UnterminatedString,
                         Token::new(
                             TokenType::Invalid,
                             Object::Nil,
@@ -135,8 +164,8 @@ impl Scanner {
         let unescaped = Scanner::unescape(self.source[self.start+1..self.current-1].to_string());
 
         return Ok(Token::new(
-                TokenType::Regex,
-                Object::Regex(unescaped.clone()),
+                TokenType::Str,
+                Object::Str(unescaped.clone()),
                 &unescaped,
                 self.line,
                 self.start,
@@ -154,20 +183,101 @@ impl Scanner {
         }
     }
 
-    fn scan_hex(&mut self, c: char) -> BoxResult<Token> {
-        panic!();
+    fn scan_hex(&mut self, _c: char) -> BoxResult<Token> {
+        while Scanner::is_hex(self.peek()) {
+            self.advance();
+        }
+        return self.get_num(_c, 2, TokenType::Number, 16);
     }
 
-    fn scan_bin(&mut self, c: char) -> BoxResult<Token> {
-        panic!();
+    fn scan_bin(&mut self, _c: char) -> BoxResult<Token> {
+        while Scanner::is_binary(self.peek()) {
+            self.advance();
+        }
+        return self.get_num(_c, 2, TokenType::Number, 2);
     }
 
-    fn scan_dec(&mut self, c: char) -> BoxResult<Token> {
-        panic!();
+    fn scan_dec(&mut self, _c: char) -> BoxResult<Token> {
+        let start_offset = 0;
+        let mut token_type = TokenType::Number;
+        // decimal
+        while Scanner::is_digit(self.peek()) {
+            self.advance();
+        }
+
+        // is float?
+        if self.peek() == '.' && Scanner::is_digit(self.peek_next()) {
+            self.advance();
+            token_type = TokenType::Real;
+            while Scanner::is_digit(self.peek()) {
+                self.advance();
+            }
+        }
+
+        return self.get_num(_c, start_offset, token_type, 10);
+    }
+
+    fn get_num(&mut self, _c: char, start_offset: usize, token_type: TokenType, radix: u32) -> BoxResult<Token> {
+        let number = self.source[self.start+start_offset..self.current].to_string().clone();
+
+        if token_type == TokenType::Real {
+            let num = match Scanner::str_to_real(&number) {
+                Some(n) => n,
+                _ => {
+                    return Err(Box::new(
+                            ExecError::new(
+                                ErrorType::NumberParseError,
+                                Token::new(
+                                    TokenType::Invalid,
+                                    Object::Nil,
+                                    &number,
+                                    self.line,
+                                    self.start,
+                                    &self.path))));
+                }
+            };
+
+            return Ok(Token::new(
+                    token_type,
+                    Object::Real(num),
+                    &number,
+                    self.line,
+                    self.start,
+                    &self.path));
+        } else {
+            let num = match Scanner::str_to_num(&number, radix) {
+                Some(n) => n,
+                _ => {
+                    return Err(Box::new(
+                            ExecError::new(
+                                ErrorType::NumberParseError,
+                                Token::new(
+                                    TokenType::Invalid,
+                                    Object::Nil,
+                                    &number,
+                                    self.line,
+                                    self.start,
+                                    &self.path)))); }
+            };
+            return Ok(Token::new(
+                    token_type,
+                    Object::Number(num),
+                    &number,
+                    self.line,
+                    self.start,
+                    &self.path));
+        }
     }
 
     fn peek(&self) -> char {
         self.source.chars().nth(self.current).unwrap_or('\0')
+    }
+
+    fn peek_next(&self) -> char {
+        if self.current + 1 >= self.source.len() {
+            return '\0';
+        }
+        return self.source.chars().nth(self.current + 1).unwrap_or('\0');
     }
 
     fn advance(&mut self) -> char {
@@ -181,8 +291,16 @@ impl Scanner {
 
     fn is_alpha(c: char) -> bool {
         return (c >= 'a' && c <= 'z') ||
-            (c >= 'A' && c <= 'Z') ||
-            c == '_';
+            (c >= 'A' && c <= 'Z')
+            || c == '_'
+            || c == '-'
+            || c == '+'
+            || c == '*'
+            || c == '/'
+            || c == '%'
+            || c == '>'
+            || c == '<'
+            || c == '=';
     }
 
     fn is_digit(c: char) -> bool {
@@ -237,6 +355,21 @@ impl Scanner {
 
         return result;
     }
+
+    fn str_to_real(s: &str) -> Option<ObjReal> {
+        match s.parse::<ObjReal>() {
+            Ok(n) => return Some(n),
+            _ => return None
+        }
+    }
+
+    fn str_to_num(s: &str, base: u32) -> Option<ObjNumber> {
+        match isize::from_str_radix(&s, base) {
+            Ok(n) => return Some(n as ObjNumber),
+            _ => return None
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -290,5 +423,41 @@ mod tests {
         assert!(Scanner::is_binary('0'));
         assert!(Scanner::is_binary('1'));
         assert!(!Scanner::is_binary('2'));
+    }
+
+    #[test]
+    fn it_should_scan_decimal_numbers() {
+        let mut scanner = Scanner::new("123", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Number,
+                    Object::Number(123),
+                    "123",
+                    1,
+                    0,
+                    "")]);
+    }
+
+    #[test]
+    fn it_should_scan_hex_numbers() {
+        let mut scanner = Scanner::new("0xa123e", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Number,
+                    Object::Number(0xa123e),
+                    "a134e",
+                    1,
+                    0,
+                    "")]);
     }
 }
