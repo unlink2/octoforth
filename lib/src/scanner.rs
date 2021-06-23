@@ -174,9 +174,9 @@ impl Scanner {
 
     fn scan_number(&mut self, c: char) -> BoxResult<Token> {
         // decide if it is hex, binary or decimal
-        if c == '0' && self.peek() == 'x' {
+        if c == '0' && self.is_match('x') {
             self.scan_hex(c)
-        } else if c == '0' && self.peek() == 'b' {
+        } else if c == '0' && self.is_match('b') {
             self.scan_bin(c)
         } else {
             self.scan_dec(c)
@@ -187,14 +187,14 @@ impl Scanner {
         while Scanner::is_hex(self.peek()) {
             self.advance();
         }
-        return self.get_num(_c, 2, TokenType::Number, 16);
+        return self.get_num("0x", 2, TokenType::Number, 16);
     }
 
     fn scan_bin(&mut self, _c: char) -> BoxResult<Token> {
         while Scanner::is_binary(self.peek()) {
             self.advance();
         }
-        return self.get_num(_c, 2, TokenType::Number, 2);
+        return self.get_num("0b", 2, TokenType::Number, 2);
     }
 
     fn scan_dec(&mut self, _c: char) -> BoxResult<Token> {
@@ -214,10 +214,10 @@ impl Scanner {
             }
         }
 
-        return self.get_num(_c, start_offset, token_type, 10);
+        return self.get_num("", start_offset, token_type, 10);
     }
 
-    fn get_num(&mut self, _c: char, start_offset: usize, token_type: TokenType, radix: u32) -> BoxResult<Token> {
+    fn get_num(&mut self, prefix: &str, start_offset: usize, token_type: TokenType, radix: u32) -> BoxResult<Token> {
         let number = self.source[self.start+start_offset..self.current].to_string().clone();
 
         if token_type == TokenType::Real {
@@ -237,10 +237,12 @@ impl Scanner {
                 }
             };
 
+            let mut lexeme = prefix.to_string();
+            lexeme.push_str(&number);
             return Ok(Token::new(
                     token_type,
                     Object::Real(num),
-                    &number,
+                    &lexeme,
                     self.line,
                     self.start,
                     &self.path));
@@ -259,10 +261,13 @@ impl Scanner {
                                     self.start,
                                     &self.path)))); }
             };
+
+            let mut lexeme = prefix.to_string();
+            lexeme.push_str(&number);
             return Ok(Token::new(
                     token_type,
                     Object::Number(num),
-                    &number,
+                    &lexeme,
                     self.line,
                     self.start,
                     &self.path));
@@ -278,6 +283,14 @@ impl Scanner {
             return '\0';
         }
         return self.source.chars().nth(self.current + 1).unwrap_or('\0');
+    }
+
+    fn is_match(&mut self, c: char) -> bool {
+        if self.peek() == c {
+            self.advance();
+            return true;
+        }
+        return false;
     }
 
     fn advance(&mut self) -> char {
@@ -455,7 +468,25 @@ mod tests {
         assert_eq!(tokens, vec![Token::new(
                     TokenType::Number,
                     Object::Number(0xa123e),
-                    "a134e",
+                    "0xa123e",
+                    1,
+                    0,
+                    "")]);
+    }
+
+    #[test]
+    fn it_should_scan_bin_numbers() {
+        let mut scanner = Scanner::new("0b101", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Number,
+                    Object::Number(0b101),
+                    "0b101",
                     1,
                     0,
                     "")]);
