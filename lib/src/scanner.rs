@@ -52,6 +52,14 @@ impl Scanner {
                 self.line += 1;
                 return Ok(None);
             },
+            '#' => {
+                // comment until end of line
+                while self.peek() != '\n'
+                    && !self.is_at_end() {
+                    self.advance();
+                }
+                return Ok(None);
+            },
             '\'' => {
                 Token::new(
                     TokenType::Quote,
@@ -78,7 +86,7 @@ impl Scanner {
                 Token::new(
                     TokenType::RParen,
                     Object::Nil,
-                    "(",
+                    ")",
                     self.line,
                     self.start,
                     &self.path)
@@ -162,11 +170,12 @@ impl Scanner {
         self.advance();
 
         let unescaped = Scanner::unescape(self.source[self.start+1..self.current-1].to_string());
+        let lexeme = Scanner::unescape(self.source[self.start..self.current].to_string());
 
         return Ok(Token::new(
                 TokenType::Str,
                 Object::Str(unescaped.clone()),
-                &unescaped,
+                &lexeme,
                 self.line,
                 self.start,
                 &self.path));
@@ -487,6 +496,114 @@ mod tests {
                     TokenType::Number,
                     Object::Number(0b101),
                     "0b101",
+                    1,
+                    0,
+                    "")]);
+    }
+
+    #[test]
+    fn it_should_scan_atoms() {
+        let mut scanner = Scanner::new("atom", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Atom,
+                    Object::Atom("atom".into()),
+                    "atom",
+                    1,
+                    0,
+                    "")]);
+    }
+
+    #[test]
+    fn it_should_scan_quote() {
+        let mut scanner = Scanner::new("'", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Quote,
+                    Object::Nil,
+                    "'",
+                    1,
+                    0,
+                    "")]);
+    }
+
+    #[test]
+    fn it_should_scan_rparen() {
+        let mut scanner = Scanner::new(")", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::RParen,
+                    Object::Nil,
+                    ")",
+                    1,
+                    0,
+                    "")]);
+    }
+
+    #[test]
+    fn it_should_scan_lparen() {
+        let mut scanner = Scanner::new("(", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::LParen,
+                    Object::Nil,
+                    "(",
+                    1,
+                    0,
+                    "")]);
+    }
+
+    #[test]
+    fn it_not_should_scan_comments() {
+        let mut scanner = Scanner::new("# comment\n(", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::LParen,
+                    Object::Nil,
+                    "(",
+                    2,
+                    10,
+                    "")]);
+    }
+
+    #[test]
+    fn it_should_scan_strings() {
+        let mut scanner = Scanner::new("\"Hello World!\"", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Str,
+                    Object::Str("Hello World!".into()),
+                    "\"Hello World!\"",
                     1,
                     0,
                     "")]);
