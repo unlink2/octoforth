@@ -227,6 +227,15 @@ impl Scanner {
     }
 
     fn get_num(&mut self, prefix: &str, start_offset: usize, token_type: TokenType, radix: u32) -> BoxResult<Token> {
+        // advance to next space, tab or new line
+        while (self.peek() != ' '
+            && self.peek() != '\t'
+            && self.peek() != '\n')
+            && !self.is_at_end() {
+            println!("{}", self.peek());
+            self.advance();
+        }
+
         let number = self.source[self.start+start_offset..self.current].to_string().clone();
 
         if token_type == TokenType::Real {
@@ -449,7 +458,7 @@ mod tests {
 
     #[test]
     fn it_should_scan_decimal_numbers() {
-        let mut scanner = Scanner::new("123", "");
+        let mut scanner = Scanner::new("123 456", "");
 
         let tokens = match scanner.scan() {
             MaybeErrors::Results(t) => t,
@@ -460,6 +469,31 @@ mod tests {
                     TokenType::Number,
                     Object::Number(123),
                     "123",
+                    1,
+                    0,
+                    ""),
+                    Token::new(
+                    TokenType::Number,
+                    Object::Number(456),
+                    "456",
+                    1,
+                    4,
+                    "")]);
+    }
+
+    #[test]
+    fn it_should_scan_float_numbers() {
+        let mut scanner = Scanner::new("3.1415", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Real,
+                    Object::Real(3.1415),
+                    "3.1415",
                     1,
                     0,
                     "")]);
@@ -607,5 +641,76 @@ mod tests {
                     1,
                     0,
                     "")]);
+    }
+
+    // failure tests
+    #[test]
+    fn it_should_not_scan_invalid_decimal_numbers() {
+        let mut scanner = Scanner::new("1a23", "");
+
+        let errors = match scanner.scan() {
+            MaybeErrors::Results(_) => panic!("Should error"),
+            MaybeErrors::Errors(e) => e
+        };
+
+        // get messages
+        let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
+        assert_eq!(errors_id, vec!["NumberParseError".to_string()]);
+    }
+
+    #[test]
+    fn it_should_not_scan_invalid_hex_numbers() {
+        let mut scanner = Scanner::new("0xag123e", "");
+
+        let errors = match scanner.scan() {
+            MaybeErrors::Results(_) => panic!("Should error"),
+            MaybeErrors::Errors(e) => e
+        };
+
+        // get messages
+        let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
+        assert_eq!(errors_id, vec!["NumberParseError".to_string()]);
+    }
+
+    #[test]
+    fn it_should_not_scan_invalid_bin_numbers() {
+        let mut scanner = Scanner::new("0b102", "");
+
+        let errors = match scanner.scan() {
+            MaybeErrors::Results(_) => panic!("Should error"),
+            MaybeErrors::Errors(e) => e
+        };
+
+        // get messages
+        let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
+        assert_eq!(errors_id, vec!["NumberParseError".to_string()]);
+    }
+
+    #[test]
+    fn it_should_not_scan_invalid_tokens() {
+        let mut scanner = Scanner::new("@", "");
+
+        let errors = match scanner.scan() {
+            MaybeErrors::Results(_) => panic!("Should error"),
+            MaybeErrors::Errors(e) => e
+        };
+
+        // get messages
+        let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
+        assert_eq!(errors_id, vec!["InvalidToken".to_string()]);
+    }
+
+    #[test]
+    fn it_should_not_scan_unterminated_strings() {
+        let mut scanner = Scanner::new("\"Hello World!", "");
+
+        let errors = match scanner.scan() {
+            MaybeErrors::Results(_) => panic!("Should error"),
+            MaybeErrors::Errors(e) => e
+        };
+
+        // get messages
+        let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
+        assert_eq!(errors_id, vec!["UnterminatedString".to_string()]);
     }
 }

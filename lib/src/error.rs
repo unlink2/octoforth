@@ -8,7 +8,7 @@ pub enum MaybeErrors<T> {
     Errors(Vec<Box<dyn std::error::Error>>)
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ErrorType {
     InvalidToken,
     UnterminatedString,
@@ -16,6 +16,13 @@ pub enum ErrorType {
     NumberParseError
 }
 
+impl fmt::Display for ErrorType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(PartialEq)]
 pub struct ExecError {
     pub error_type: ErrorType,
     pub token: Token
@@ -51,6 +58,6 @@ impl fmt::Display for ExecError {
 
 impl fmt::Debug for ExecError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{{ file: {}, line: {}, desc: {}}}", file!(), line!(), self.to_string())
+        write!(f, "{:?}", self.error_type)
     }
 }
