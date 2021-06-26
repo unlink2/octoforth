@@ -6,11 +6,22 @@ pub enum TokenType {
     Number,
     Real,
     Str,
-    RParen,
-    LParen,
-    Atom,
+    Word,
+
+    If,
+    Then,
+    Else,
+    Begin,
+    Until,
+    Loop,
+    Do,
+
+    StartDefine,
+    EndDefine,
+
+    StartInlineDefine,
+
     EndOfFile,
-    Quote
 }
 
 #[derive(Debug, PartialEq, Clone)]

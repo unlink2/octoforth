@@ -1,10 +1,12 @@
 use super::error::*;
 use super::token::{Token, TokenType};
 use super::object::*;
+use std::collections::HashMap;
 
 pub struct Scanner {
     source: String,
     path: String,
+    keywords: HashMap<String, TokenType>,
 
     current: usize,
     start: usize,
@@ -13,9 +15,22 @@ pub struct Scanner {
 
 impl Scanner {
     pub fn new(source: &str, path: &str) -> Self {
+        let mut keywords = HashMap::new();
+        keywords.insert("then".to_string(), TokenType::Then);
+        keywords.insert("if".to_string(), TokenType::If);
+        keywords.insert("else".to_string(), TokenType::Else);
+        keywords.insert("do".to_string(), TokenType::Do);
+        keywords.insert("until".to_string(), TokenType::Until);
+        keywords.insert("loop".to_string(), TokenType::Loop);
+        keywords.insert(":".to_string(), TokenType::StartDefine);
+        keywords.insert(";".to_string(), TokenType::EndDefine);
+        keywords.insert(":i".to_string(), TokenType::StartInlineDefine);
+
         Self {
             source: source.into(),
             path: path.into(),
+            keywords,
+
             current: 0,
             start: 0,
             line: 1
@@ -56,7 +71,7 @@ impl Scanner {
         let c = self.advance();
 
         let token = match c {
-            ' ' | '\r' => return Ok(None),
+            ' ' | '\r' | '(' | ')' => return Ok(None),
             '\n' => {
                 self.line += 1;
                 return Ok(None);
@@ -69,36 +84,9 @@ impl Scanner {
                 }
                 return Ok(None);
             },
-            '\'' => {
-                Token::new(
-                    TokenType::Quote,
-                    Object::Nil,
-                    "'",
-                    self.line,
-                    self.start,
-                    &self.path)
-            },
             '"' => match self.scan_str(c) {
                 Ok(token) => token,
                 Err(err) => return Err(err)
-            },
-            '(' => {
-                Token::new(
-                    TokenType::LParen,
-                    Object::Nil,
-                    "(",
-                    self.line,
-                    self.start,
-                    &self.path)
-            },
-            ')' => {
-                Token::new(
-                    TokenType::RParen,
-                    Object::Nil,
-                    ")",
-                    self.line,
-                    self.start,
-                    &self.path)
             },
             '\0' => {
                 return Ok(None);
@@ -115,13 +103,21 @@ impl Scanner {
                     while Scanner::is_alpha_numeric(self.peek()) {
                         self.advance();
                     }
-                    let atom = self.source[self.start..self.current]
+                    let word = self.source[self.start..self.current]
                         .to_string()
                         .clone();
+
+                    let mut token_type = TokenType::Word;
+
+                    // is it keyword?
+                    if self.keywords.contains_key(&word) {
+                        token_type = self.keywords[&word];
+                    }
+
                     Token::new(
-                        TokenType::Atom,
-                        Object::Atom(atom.clone()),
-                        &atom,
+                        token_type,
+                        Object::Word(word.clone()),
+                        &word,
                         self.line,
                         self.start,
                         &self.path)
@@ -567,8 +563,8 @@ mod tests {
     }
 
     #[test]
-    fn it_should_scan_atoms() {
-        let mut scanner = Scanner::new("atom", "");
+    fn it_should_scan_words() {
+        let mut scanner = Scanner::new("atom if", "");
 
         let tokens = match scanner.scan() {
             MaybeErrors::Results(t) => t,
@@ -576,99 +572,31 @@ mod tests {
         };
 
         assert_eq!(tokens, vec![Token::new(
-                    TokenType::Atom,
-                    Object::Atom("atom".into()),
+                    TokenType::Word,
+                    Object::Word("atom".into()),
                     "atom",
                     1,
                     0,
                     ""),
                     Token::new(
-                        TokenType::EndOfFile,
-                        Object::Nil,
-                        "",
+                        TokenType::If,
+                        Object::Word("if".into()),
+                        "if",
                         1,
-                        4,
-                        "")]);
-    }
-
-    #[test]
-    fn it_should_scan_quote() {
-        let mut scanner = Scanner::new("'", "");
-
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
-
-        assert_eq!(tokens, vec![Token::new(
-                    TokenType::Quote,
-                    Object::Nil,
-                    "'",
-                    1,
-                    0,
-                    ""),
+                        5,
+                        ""),
                     Token::new(
                         TokenType::EndOfFile,
                         Object::Nil,
                         "",
                         1,
-                        1,
-                        "")]);
-    }
-
-    #[test]
-    fn it_should_scan_rparen() {
-        let mut scanner = Scanner::new(")", "");
-
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
-
-        assert_eq!(tokens, vec![Token::new(
-                    TokenType::RParen,
-                    Object::Nil,
-                    ")",
-                    1,
-                    0,
-                    ""),
-                    Token::new(
-                        TokenType::EndOfFile,
-                        Object::Nil,
-                        "",
-                        1,
-                        1,
-                        "")]);
-    }
-
-    #[test]
-    fn it_should_scan_lparen() {
-        let mut scanner = Scanner::new("(", "");
-
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
-
-        assert_eq!(tokens, vec![Token::new(
-                    TokenType::LParen,
-                    Object::Nil,
-                    "(",
-                    1,
-                    0,
-                    ""),
-                    Token::new(
-                        TokenType::EndOfFile,
-                        Object::Nil,
-                        "",
-                        1,
-                        1,
+                        7,
                         "")]);
     }
 
     #[test]
     fn it_not_should_scan_comments() {
-        let mut scanner = Scanner::new("# comment\n(", "");
+        let mut scanner = Scanner::new("# comment\natom", "");
 
         let tokens = match scanner.scan() {
             MaybeErrors::Results(t) => t,
@@ -676,9 +604,9 @@ mod tests {
         };
 
         assert_eq!(tokens, vec![Token::new(
-                    TokenType::LParen,
-                    Object::Nil,
-                    "(",
+                    TokenType::Word,
+                    Object::Word("atom".into()),
+                    "atom",
                     2,
                     10,
                     ""),
@@ -687,7 +615,32 @@ mod tests {
                         Object::Nil,
                         "",
                         2,
-                        11,
+                        14,
+                        "")]);
+    }
+
+    #[test]
+    fn it_not_should_ignore_parens() {
+        let mut scanner = Scanner::new("(\natom)", "");
+
+        let tokens = match scanner.scan() {
+            MaybeErrors::Results(t) => t,
+            _ => panic!("Should not error")
+        };
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Word,
+                    Object::Word("atom".into()),
+                    "atom",
+                    2,
+                    2,
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        2,
+                        7,
                         "")]);
     }
 

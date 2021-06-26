@@ -8,6 +8,7 @@ use super::scanner::Scanner;
 use super::token::{Token, TokenType};
 use super::error::{ExecError, ErrorType, MaybeErrors, BoxResult};
 use super::expr::*;
+use super::stmt::*;
 
 pub struct Parser {
     current: usize,
@@ -28,12 +29,12 @@ impl Parser {
         })
     }
 
-    pub fn parse(&mut self) -> MaybeErrors<Vec<Expr>> {
+    pub fn parse(&mut self) -> MaybeErrors<Vec<Stmt>> {
         let mut exprs = vec![];
         let mut errors = vec![];
 
         while !self.is_at_end() {
-            match self.expr() {
+            match self.stmt() {
                 Ok(expr) => exprs.push(expr),
                 Err(err) => {
                     errors.push(err);
@@ -45,46 +46,36 @@ impl Parser {
         return MaybeErrors::Results(exprs);
     }
 
+    fn stmt(&mut self) -> BoxResult<Stmt> {
+        if self.is_match(vec![TokenType::StartDefine]) {
+            return self.define_stmt();
+        } else {
+            // default case
+            let expr = match self.expr() {
+                Ok(expr) => expr,
+                Err(err) => return Err(err)
+            };
+
+            return Ok(Stmt::ExprStmt(ExprStmt::new(expr)));
+        }
+    }
+
+    fn define_stmt(&mut self) -> BoxResult<Stmt> {
+        panic!();
+    }
+
     fn expr(&mut self) -> BoxResult<Expr> {
-        if self.is_match(vec![TokenType::LParen]) {
-            self.list_expr()
-        } else if self.is_match(vec![
-            TokenType::Atom,
+        if self.is_match(vec![
+            TokenType::Word,
             TokenType::Str,
             TokenType::Number,
             TokenType::Real]) {
-            self.atom_expr()
+            Ok(Expr::Literal(LiteralExpr::new(self.previous().clone())))
         } else {
             Err(Box::new(
                     ExecError::new(ErrorType::UnexpectedToken, self.peek().clone())))
         }
     }
-
-    fn atom_expr(&mut self) -> BoxResult<Expr> {
-        Ok(Expr::Atom(AtomExpr::new(self.previous().clone())))
-    }
-
-    fn list_expr(&mut self) -> BoxResult<Expr> {
-        // consume all args until )
-        let mut args = vec![];
-        let op = self.previous().clone();
-        while !self.check(TokenType::RParen) && !self.is_at_end() {
-            // evalulate all arg exprs
-            let expr = match self.expr() {
-                Ok(expr) => Box::new(expr.clone()),
-                Err(err) => return Err(err)
-            };
-            args.push(expr);
-        }
-
-        match self.consume(TokenType::RParen, ErrorType::ExpectedRParen) {
-            Ok(_) => {}, // ingore token
-            Err(err) => return Err(err)
-        };
-
-        return Ok(Expr::List(ListExpr::new(op, args)));
-    }
-
 
     fn consume(&mut self, token_type: TokenType, error: ErrorType) -> BoxResult<Token> {
         if self.check(token_type) {
@@ -133,18 +124,5 @@ impl Parser {
     // to allow more than 1 error message per pass
     fn sync(&mut self) {
         self.advance();
-
-        while !self.is_at_end() {
-            if self.previous().token_type == TokenType::RParen {
-                return;
-            }
-
-            match self.peek().token_type {
-                TokenType::LParen => return,
-                    _ => {}
-            }
-
-            self.advance();
-        }
     }
 }

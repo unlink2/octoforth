@@ -9,6 +9,5 @@ pub enum Object {
     Number(ObjNumber),
     Real(ObjReal),
     Str(ObjStr),
-    List(ObjList),
-    Atom(ObjStr)
+    Word(ObjStr)
 }

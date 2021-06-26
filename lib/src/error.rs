@@ -15,7 +15,6 @@ pub enum ErrorType {
     BadNumber,
     NumberParseError,
     UnexpectedToken,
-    ExpectedRParen
 }
 
 impl fmt::Display for ErrorType {

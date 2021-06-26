@@ -4,8 +4,7 @@ use super::error::*;
 
 #[derive(Clone)]
 pub enum Expr {
-    List(ListExpr),
-    Atom(AtomExpr)
+    Literal(LiteralExpr),
 }
 
 pub trait ExprNode {
@@ -13,46 +12,25 @@ pub trait ExprNode {
 }
 
 pub trait ExprVisitor {
-    fn visit_list(&mut self, expr: &mut ListExpr) -> BoxResult<Object>;
-    fn visit_atom(&mut self, expr: &mut AtomExpr) -> BoxResult<Object>;
+    fn visit_literal(&mut self, expr: &mut LiteralExpr) -> BoxResult<Object>;
 }
 
 #[derive(Clone)]
-pub struct ListExpr {
-    pub op: Token,
-    pub args: Vec<Box<Expr>>,
+pub struct LiteralExpr {
+    pub literal: Token,
 }
 
-impl ListExpr {
-    pub fn new(op: Token, args: Vec<Box<Expr>>) -> Self {
+impl LiteralExpr {
+    pub fn new(literal: Token) -> Self {
         Self {
-            op,
-            args
+            literal
         }
     }
 }
 
-impl ExprNode for ListExpr {
+impl ExprNode for LiteralExpr {
     fn accept(&mut self, visitor: &mut dyn ExprVisitor) -> BoxResult<Object> {
-        return visitor.visit_list(self);
+        return visitor.visit_literal(self);
     }
 }
 
-#[derive(Clone)]
-pub struct AtomExpr {
-    pub atom: Token
-}
-
-impl AtomExpr {
-    pub fn new(atom: Token) -> Self {
-        Self {
-            atom
-        }
-    }
-}
-
-impl ExprNode for AtomExpr {
-    fn accept(&mut self, visitor: &mut dyn ExprVisitor) -> BoxResult<Object> {
-        return visitor.visit_atom(self);
-    }
-}
