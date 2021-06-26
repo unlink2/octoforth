@@ -1,14 +1,14 @@
 [package]
-name = "rused"
+name = "octolisp"
 version = "0.1.0"
 authors = ["Lukas Krickl <lukas@krickl.dev>"]
 description = "Stream editor lisp"
 license = "MIT"
-homepage = "https://github.com/unlink2/rused"
+homepage = "https://github.com/unlink2/octolisp"
 readme = "../README.md"
 
 [lib]
-name = "rused"
+name = "octolisp"
 path = "src/lib.rs"
 
 [dependencies]

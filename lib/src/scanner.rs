@@ -32,6 +32,15 @@ impl Scanner {
                 Err(err) => errors.push(err)
             }
         }
+        self.start = self.current;
+        // insert eof token
+        tokens.push(Token::new(
+            TokenType::EndOfFile,
+            Object::Nil,
+            "",
+            self.line,
+            self.start,
+            &self.path));
 
         if errors.len() > 0 {
             return MaybeErrors::Errors(errors);
@@ -92,13 +101,7 @@ impl Scanner {
                     &self.path)
             },
             '\0' => {
-                Token::new(
-                    TokenType::EndOfFile,
-                    Object::Nil,
-                    "(",
-                    self.line,
-                    self.start,
-                    &self.path)
+                return Ok(None);
             },
             _ => {
                 // TODO use pattern range in the future?
@@ -466,19 +469,26 @@ mod tests {
         };
 
         assert_eq!(tokens, vec![Token::new(
-                    TokenType::Number,
-                    Object::Number(123),
-                    "123",
-                    1,
-                    0,
-                    ""),
+                        TokenType::Number,
+                        Object::Number(123),
+                        "123",
+                        1,
+                        0,
+                        ""),
                     Token::new(
-                    TokenType::Number,
-                    Object::Number(456),
-                    "456",
-                    1,
-                    4,
-                    "")]);
+                        TokenType::Number,
+                        Object::Number(456),
+                        "456",
+                        1,
+                        4,
+                        ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        7,
+                        "")]);
     }
 
     #[test]
@@ -491,12 +501,19 @@ mod tests {
         };
 
         assert_eq!(tokens, vec![Token::new(
-                    TokenType::Real,
-                    Object::Real(3.1415),
-                    "3.1415",
-                    1,
-                    0,
-                    "")]);
+                        TokenType::Real,
+                        Object::Real(3.1415),
+                        "3.1415",
+                        1,
+                        0,
+                        ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        6,
+                        "")]);
     }
 
     #[test]
@@ -509,12 +526,19 @@ mod tests {
         };
 
         assert_eq!(tokens, vec![Token::new(
-                    TokenType::Number,
-                    Object::Number(0xa123e),
-                    "0xa123e",
-                    1,
-                    0,
-                    "")]);
+                        TokenType::Number,
+                        Object::Number(0xa123e),
+                        "0xa123e",
+                        1,
+                        0,
+                        ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        7,
+                        "")]);
     }
 
     #[test]
@@ -532,7 +556,14 @@ mod tests {
                     "0b101",
                     1,
                     0,
-                    "")]);
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        5,
+                        "")]);
     }
 
     #[test]
@@ -550,7 +581,14 @@ mod tests {
                     "atom",
                     1,
                     0,
-                    "")]);
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        4,
+                        "")]);
     }
 
     #[test]
@@ -568,7 +606,14 @@ mod tests {
                     "'",
                     1,
                     0,
-                    "")]);
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        1,
+                        "")]);
     }
 
     #[test]
@@ -586,7 +631,14 @@ mod tests {
                     ")",
                     1,
                     0,
-                    "")]);
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        1,
+                        "")]);
     }
 
     #[test]
@@ -604,7 +656,14 @@ mod tests {
                     "(",
                     1,
                     0,
-                    "")]);
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        1,
+                        "")]);
     }
 
     #[test]
@@ -622,7 +681,14 @@ mod tests {
                     "(",
                     2,
                     10,
-                    "")]);
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        2,
+                        11,
+                        "")]);
     }
 
     #[test]
@@ -640,7 +706,14 @@ mod tests {
                     "\"Hello World!\"",
                     1,
                     0,
-                    "")]);
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        14,
+                        "")]);
     }
 
     // failure tests
