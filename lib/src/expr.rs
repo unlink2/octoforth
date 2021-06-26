@@ -2,8 +2,10 @@ use super::object::*;
 use super::token::*;
 use super::error::*;
 
+#[derive(Clone)]
 pub enum Expr {
-    Binary(BinaryExpr)
+    List(ListExpr),
+    Atom(AtomExpr)
 }
 
 pub trait ExprNode {
@@ -11,18 +13,46 @@ pub trait ExprNode {
 }
 
 pub trait ExprVisitor {
-    fn visit_binary(&mut self, expr: &mut BinaryExpr) -> BoxResult<Object>;
+    fn visit_list(&mut self, expr: &mut ListExpr) -> BoxResult<Object>;
+    fn visit_atom(&mut self, expr: &mut AtomExpr) -> BoxResult<Object>;
 }
 
-pub struct BinaryExpr {
+#[derive(Clone)]
+pub struct ListExpr {
     pub op: Token,
-    pub left: Box<Expr>,
-    pub right: Box<Expr>
+    pub args: Vec<Box<Expr>>,
 }
 
-impl ExprNode for BinaryExpr {
-    fn accept(&mut self, visitor: &mut dyn ExprVisitor) -> BoxResult<Object> {
-        return visitor.visit_binary(self);
+impl ListExpr {
+    pub fn new(op: Token, args: Vec<Box<Expr>>) -> Self {
+        Self {
+            op,
+            args
+        }
     }
 }
 
+impl ExprNode for ListExpr {
+    fn accept(&mut self, visitor: &mut dyn ExprVisitor) -> BoxResult<Object> {
+        return visitor.visit_list(self);
+    }
+}
+
+#[derive(Clone)]
+pub struct AtomExpr {
+    pub atom: Token
+}
+
+impl AtomExpr {
+    pub fn new(atom: Token) -> Self {
+        Self {
+            atom
+        }
+    }
+}
+
+impl ExprNode for AtomExpr {
+    fn accept(&mut self, visitor: &mut dyn ExprVisitor) -> BoxResult<Object> {
+        return visitor.visit_atom(self);
+    }
+}

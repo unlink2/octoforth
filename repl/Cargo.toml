@@ -1,16 +1,16 @@
 [package]
-name = "octolisp-repl"
+name = "octoforth-repl"
 version = "0.1.0"
 authors = ["Lukas Krickl <lukas@krickl.dev>"]
-description = "octolisp repl for local testing"
+description = "octoforth repl for local testing"
 license = "MIT"
-homepage = "https://github.com/unlink2/octolisp"
+homepage = "https://github.com/unlink2/octoforth"
 edition = "2018"
 
 [[bin]]
-name = "octolisp-repl"
+name = "octoforth-repl"
 path = "src/main.rs"
 
 [dependencies]
-octolisp = {path = "../lib"}
+octoforth = {path = "../lib"}
 clap = "3.0.0-beta.2"

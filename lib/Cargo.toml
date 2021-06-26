@@ -1,14 +1,14 @@
 [package]
-name = "octolisp"
+name = "octoforth"
 version = "0.1.0"
 authors = ["Lukas Krickl <lukas@krickl.dev>"]
-description = "Stream editor lisp"
+description = "6502 forth compiler"
 license = "MIT"
-homepage = "https://github.com/unlink2/octolisp"
+homepage = "https://github.com/unlink2/octoforth"
 readme = "../README.md"
 
 [lib]
-name = "octolisp"
+name = "octoforth"
 path = "src/lib.rs"
 
 [dependencies]

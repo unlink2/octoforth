@@ -1,6 +1,6 @@
 use super::object::Object;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TokenType {
     Invalid,
     Number,
@@ -13,7 +13,7 @@ pub enum TokenType {
     Quote
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: Object,
