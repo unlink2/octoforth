@@ -5,3 +5,5 @@ pub mod scanner;
 pub mod object;
 pub mod expr;
 pub mod stmt;
+pub mod compiler;
+pub mod dictionary;

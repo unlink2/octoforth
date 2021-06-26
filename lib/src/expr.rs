@@ -2,7 +2,7 @@ use super::object::*;
 use super::token::*;
 use super::error::*;
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Literal(LiteralExpr),
 }
@@ -15,7 +15,7 @@ pub trait ExprVisitor {
     fn visit_literal(&mut self, expr: &mut LiteralExpr) -> BoxResult<Object>;
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LiteralExpr {
     pub literal: Token,
 }

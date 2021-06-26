@@ -37,7 +37,7 @@ impl Scanner {
         }
     }
 
-    pub fn scan(&mut self) -> MaybeErrors<Vec<Token>> {
+    pub fn scan(&mut self) -> Result<Vec<Token>, ErrorList> {
         let mut tokens = vec![];
         let mut errors = vec![];
         while !self.is_at_end() {
@@ -58,10 +58,10 @@ impl Scanner {
             &self.path));
 
         if errors.len() > 0 {
-            return MaybeErrors::Errors(errors);
+            return Err(ErrorList::new(errors));
         }
 
-        return MaybeErrors::Results(tokens);
+        return Ok(tokens);
     }
 
     /// Returns either an error
@@ -231,11 +231,13 @@ impl Scanner {
             && self.peek() != '\t'
             && self.peek() != '\n')
             && !self.is_at_end() {
-            println!("{}", self.peek());
             self.advance();
         }
 
         let number = self.source[self.start+start_offset..self.current].to_string().clone();
+
+        let mut lexeme = prefix.to_string();
+        lexeme.push_str(&number);
 
         if token_type == TokenType::Real {
             let num = match Scanner::str_to_real(&number) {
@@ -247,15 +249,13 @@ impl Scanner {
                                 Token::new(
                                     TokenType::Invalid,
                                     Object::Nil,
-                                    &number,
+                                    &lexeme,
                                     self.line,
                                     self.start,
                                     &self.path))));
                 }
             };
 
-            let mut lexeme = prefix.to_string();
-            lexeme.push_str(&number);
             return Ok(Token::new(
                     token_type,
                     Object::Real(num),
@@ -273,14 +273,12 @@ impl Scanner {
                                 Token::new(
                                     TokenType::Invalid,
                                     Object::Nil,
-                                    &number,
+                                    &lexeme,
                                     self.line,
                                     self.start,
                                     &self.path)))); }
             };
 
-            let mut lexeme = prefix.to_string();
-            lexeme.push_str(&number);
             return Ok(Token::new(
                     token_type,
                     Object::Number(num),
@@ -330,7 +328,9 @@ impl Scanner {
             || c == '%'
             || c == '>'
             || c == '<'
-            || c == '=';
+            || c == '='
+            || c == ':'
+            || c == ';';
     }
 
     fn is_digit(c: char) -> bool {
@@ -459,10 +459,7 @@ mod tests {
     fn it_should_scan_decimal_numbers() {
         let mut scanner = Scanner::new("123 456", "");
 
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
+        let tokens = scanner.scan().unwrap();
 
         assert_eq!(tokens, vec![Token::new(
                         TokenType::Number,
@@ -491,10 +488,7 @@ mod tests {
     fn it_should_scan_float_numbers() {
         let mut scanner = Scanner::new("3.1415", "");
 
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
+        let tokens = scanner.scan().unwrap();
 
         assert_eq!(tokens, vec![Token::new(
                         TokenType::Real,
@@ -516,10 +510,7 @@ mod tests {
     fn it_should_scan_hex_numbers() {
         let mut scanner = Scanner::new("0xa123e", "");
 
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
+        let tokens = scanner.scan().unwrap();
 
         assert_eq!(tokens, vec![Token::new(
                         TokenType::Number,
@@ -541,10 +532,7 @@ mod tests {
     fn it_should_scan_bin_numbers() {
         let mut scanner = Scanner::new("0b101", "");
 
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
+        let tokens = scanner.scan().unwrap();
 
         assert_eq!(tokens, vec![Token::new(
                     TokenType::Number,
@@ -566,10 +554,7 @@ mod tests {
     fn it_should_scan_words() {
         let mut scanner = Scanner::new("atom if", "");
 
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
+        let tokens = scanner.scan().unwrap();
 
         assert_eq!(tokens, vec![Token::new(
                     TokenType::Word,
@@ -598,10 +583,7 @@ mod tests {
     fn it_not_should_scan_comments() {
         let mut scanner = Scanner::new("# comment\natom", "");
 
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
+        let tokens = scanner.scan().unwrap();
 
         assert_eq!(tokens, vec![Token::new(
                     TokenType::Word,
@@ -623,10 +605,7 @@ mod tests {
     fn it_not_should_ignore_parens() {
         let mut scanner = Scanner::new("(\natom)", "");
 
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
+        let tokens = scanner.scan().unwrap();
 
         assert_eq!(tokens, vec![Token::new(
                     TokenType::Word,
@@ -648,10 +627,7 @@ mod tests {
     fn it_should_scan_strings() {
         let mut scanner = Scanner::new("\"Hello World!\"", "");
 
-        let tokens = match scanner.scan() {
-            MaybeErrors::Results(t) => t,
-            _ => panic!("Should not error")
-        };
+        let tokens = scanner.scan().unwrap();
 
         assert_eq!(tokens, vec![Token::new(
                     TokenType::Str,
@@ -674,69 +650,54 @@ mod tests {
     fn it_should_not_scan_invalid_decimal_numbers() {
         let mut scanner = Scanner::new("1a23", "");
 
-        let errors = match scanner.scan() {
-            MaybeErrors::Results(_) => panic!("Should error"),
-            MaybeErrors::Errors(e) => e
-        };
+        let errors = scanner.scan().unwrap_err().errors;
 
         // get messages
         let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
-        assert_eq!(errors_id, vec!["NumberParseError".to_string()]);
+        assert_eq!(errors_id, vec!["type: NumberParseError; lexeme: 1a23".to_string()]);
     }
 
     #[test]
     fn it_should_not_scan_invalid_hex_numbers() {
         let mut scanner = Scanner::new("0xag123e", "");
 
-        let errors = match scanner.scan() {
-            MaybeErrors::Results(_) => panic!("Should error"),
-            MaybeErrors::Errors(e) => e
-        };
+        let errors = scanner.scan().unwrap_err().errors;
 
         // get messages
         let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
-        assert_eq!(errors_id, vec!["NumberParseError".to_string()]);
+        assert_eq!(errors_id, vec!["type: NumberParseError; lexeme: 0xag123e".to_string()]);
     }
 
     #[test]
     fn it_should_not_scan_invalid_bin_numbers() {
         let mut scanner = Scanner::new("0b102", "");
 
-        let errors = match scanner.scan() {
-            MaybeErrors::Results(_) => panic!("Should error"),
-            MaybeErrors::Errors(e) => e
-        };
+        let errors = scanner.scan().unwrap_err().errors;
 
         // get messages
         let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
-        assert_eq!(errors_id, vec!["NumberParseError".to_string()]);
+        assert_eq!(errors_id, vec!["type: NumberParseError; lexeme: 0b102".to_string()]);
     }
 
     #[test]
     fn it_should_not_scan_invalid_tokens() {
         let mut scanner = Scanner::new("@", "");
 
-        let errors = match scanner.scan() {
-            MaybeErrors::Results(_) => panic!("Should error"),
-            MaybeErrors::Errors(e) => e
-        };
+        let errors = scanner.scan().unwrap_err().errors;
 
         // get messages
         let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
-        assert_eq!(errors_id, vec!["InvalidToken".to_string()]);
+        assert_eq!(errors_id, vec!["type: InvalidToken; lexeme: ".to_string()]);
     }
 
     #[test]
     fn it_should_not_scan_unterminated_strings() {
         let mut scanner = Scanner::new("\"Hello World!", "");
 
-        let errors = match scanner.scan() {
-            MaybeErrors::Results(_) => panic!("Should error"),
-            MaybeErrors::Errors(e) => e
-        };
+        let errors = scanner.scan().unwrap_err().errors;
 
         // get messages
         let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
-        assert_eq!(errors_id, vec!["UnterminatedString".to_string()]);
+        assert_eq!(errors_id, vec!["type: UnterminatedString; lexeme: ".to_string()]);
     }
 }

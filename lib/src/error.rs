@@ -3,10 +3,6 @@ use std::fmt;
 
 pub type BoxResult<T> = Result<T, Box<dyn std::error::Error>>;
 
-pub enum MaybeErrors<T> {
-    Results(T),
-    Errors(Vec<Box<dyn std::error::Error>>)
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ErrorType {
@@ -15,6 +11,8 @@ pub enum ErrorType {
     BadNumber,
     NumberParseError,
     UnexpectedToken,
+    UnterminatedBlock,
+    ExpectedName
 }
 
 impl fmt::Display for ErrorType {
@@ -59,6 +57,36 @@ impl fmt::Display for ExecError {
 
 impl fmt::Debug for ExecError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.error_type)
+        write!(f, "type: {:?}; lexeme: {}", self.error_type, self.token.lexeme)
+    }
+}
+
+pub struct ErrorList {
+    pub errors: Vec<Box<dyn std::error::Error>>
+}
+
+impl ErrorList {
+    pub fn new(errors: Vec<Box<dyn std::error::Error>>) -> Self {
+        Self {
+            errors
+        }
+    }
+}
+
+impl std::error::Error for ErrorList {
+    fn description(&self) -> &str {
+        return "Error list";
+    }
+}
+
+impl fmt::Display for ErrorList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Error list {:?}", self.errors)
+    }
+}
+
+impl fmt::Debug for ErrorList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Error list {:?}", self.errors)
     }
 }
