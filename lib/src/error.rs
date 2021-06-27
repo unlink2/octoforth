@@ -12,7 +12,8 @@ pub enum ErrorType {
     NumberParseError,
     UnexpectedToken,
     UnterminatedBlock,
-    ExpectedName
+    ExpectedName,
+    UndefinedWord
 }
 
 impl fmt::Display for ErrorType {

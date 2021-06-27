@@ -10,14 +10,24 @@ pub enum Stmt {
     Define(DefineStmt)
 }
 
+impl StmtNode for Stmt {
+    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<Vec<u8>> {
+        match self {
+            Self::Expr(expr) => expr.accept(visitor),
+            Self::Block(block) => block.accept(visitor),
+            Self::Define(define) => define.accept(visitor)
+        }
+    }
+}
+
 pub trait StmtNode {
-    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<String>;
+    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<Vec<u8>>;
 }
 
 pub trait StmtVisitor {
-    fn visit_expr(&mut self, expr: &mut ExprStmt) -> BoxResult<String>;
-    fn visit_block(&mut self, expr: &mut BlockStmt) -> BoxResult<String>;
-    fn visit_define(&mut self, expr: &mut DefineStmt) -> BoxResult<String>;
+    fn visit_expr(&mut self, expr: &mut ExprStmt) -> BoxResult<Vec<u8>>;
+    fn visit_block(&mut self, expr: &mut BlockStmt) -> BoxResult<Vec<u8>>;
+    fn visit_define(&mut self, expr: &mut DefineStmt) -> BoxResult<Vec<u8>>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,7 +44,7 @@ impl ExprStmt {
 }
 
 impl StmtNode for ExprStmt {
-    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<String> {
+    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<Vec<u8>> {
         return visitor.visit_expr(self);
     }
 }
@@ -53,7 +63,7 @@ impl BlockStmt {
 }
 
 impl StmtNode for BlockStmt {
-    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<String> {
+    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<Vec<u8>> {
         return visitor.visit_block(self);
     }
 }
@@ -76,7 +86,7 @@ impl DefineStmt {
 }
 
 impl StmtNode for DefineStmt {
-    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<String> {
+    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<Vec<u8>> {
         return visitor.visit_define(self);
     }
 }

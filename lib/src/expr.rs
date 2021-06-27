@@ -5,6 +5,16 @@ use super::error::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Literal(LiteralExpr),
+    Word(WordExpr)
+}
+
+impl ExprNode for Expr {
+    fn accept(&mut self, visitor: &mut dyn ExprVisitor) -> BoxResult<Object> {
+        match self {
+            Self::Literal(literal) => literal.accept(visitor),
+            Self::Word(word) => word.accept(visitor)
+        }
+    }
 }
 
 pub trait ExprNode {
@@ -13,6 +23,7 @@ pub trait ExprNode {
 
 pub trait ExprVisitor {
     fn visit_literal(&mut self, expr: &mut LiteralExpr) -> BoxResult<Object>;
+    fn visit_word(&mut self, expr: &mut WordExpr) -> BoxResult<Object>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,3 +45,21 @@ impl ExprNode for LiteralExpr {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct WordExpr {
+    pub name: Token,
+}
+
+impl WordExpr {
+    pub fn new(name: Token) -> Self {
+        Self {
+            name
+        }
+    }
+}
+
+impl ExprNode for WordExpr {
+    fn accept(&mut self, visitor: &mut dyn ExprVisitor) -> BoxResult<Object> {
+        return visitor.visit_word(self);
+    }
+}

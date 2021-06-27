@@ -97,8 +97,9 @@ impl Parser {
     }
 
     fn expr(&mut self) -> BoxResult<Expr> {
-        if self.is_match(vec![
-            TokenType::Word,
+        if self.is_match(vec![TokenType::Word]) {
+            Ok(Expr::Word(WordExpr::new(self.previous().clone())))
+        } else if self.is_match(vec![
             TokenType::Str,
             TokenType::Number,
             TokenType::Real]) {
@@ -191,7 +192,7 @@ mod tests {
                                         7,
                                         ""
                                 ))))),
-                    Stmt::Expr(ExprStmt::new(Expr::Literal(LiteralExpr::new(Token::new(
+                    Stmt::Expr(ExprStmt::new(Expr::Word(WordExpr::new(Token::new(
                                         TokenType::Word,
                                         Object::Word("+".into()),
                                         "+",
@@ -201,7 +202,7 @@ mod tests {
                                 ))))),
                     ]))),
                 false
-                    ))
+            ))
 
         ]);
     }
