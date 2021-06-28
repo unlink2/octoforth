@@ -16,6 +16,9 @@ pub enum TokenType {
     Loop,
     Do,
 
+    Let,
+    StartConstDefine,
+
     StartDefine,
     EndDefine,
 

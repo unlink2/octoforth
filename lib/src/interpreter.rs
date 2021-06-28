@@ -5,26 +5,33 @@ use super::expr::*;
 use super::object::*;
 use super::dictionary::*;
 
-pub struct Compiler {
+/***
+ * This interpreter is responsible
+ * for evaluating constants,
+ * but it is a fully working forth env
+ */
+pub struct Interpreter {
     stmts: Vec<Stmt>,
+    stack: Vec<Object>,
     // contains words and compile-time words
     dictionary: Dictionary,
 
     halt: bool
 }
 
-impl Compiler {
+impl Interpreter {
     pub fn new(source: &str, path: &str) -> Result<Self, ErrorList> {
         let mut parser = Parser::new(source, path)?;
         let stmts = parser.parse()?;
         Ok(Self {
             stmts,
             dictionary: Dictionary::new(),
+            stack: vec![],
             halt: false
         })
     }
 
-    pub fn compile(&mut self) -> Result<Vec<Compiled>, ErrorList> {
+    pub fn interprete(&mut self) -> Result<Vec<Compiled>, ErrorList> {
         let mut output = vec![];
         let mut errors = vec![];
 
@@ -60,7 +67,7 @@ impl Compiler {
     }
 }
 
-impl StmtVisitor for Compiler {
+impl StmtVisitor for Interpreter {
     fn visit_expr(&mut self, expr: &mut ExprStmt) -> BoxResult<Compiled> {
         // Ok(self.evaluate(expr.expr)?)
         panic!();
@@ -76,7 +83,7 @@ impl StmtVisitor for Compiler {
 
 }
 
-impl ExprVisitor for Compiler {
+impl ExprVisitor for Interpreter {
     fn visit_literal(&mut self, expr: &mut LiteralExpr) -> BoxResult<Object> {
         Ok(expr.literal.literal.clone())
     }

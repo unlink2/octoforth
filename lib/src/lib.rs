@@ -7,3 +7,5 @@ pub mod expr;
 pub mod stmt;
 pub mod compiler;
 pub mod dictionary;
+pub mod callable;
+pub mod interpreter;

@@ -53,6 +53,8 @@ impl Parser {
             return self.define_stmt();
         } else if self.is_match(vec![TokenType::StartDefine]) {
             return self.define_inline_stmt();
+        } else if self.is_match(vec![TokenType::StartConstDefine]) {
+            return self.define_const_stmt();
         } else {
             // default case
             let expr = match self.expr() {
@@ -82,7 +84,7 @@ impl Parser {
         }
 
         let block = Box::new(self.block_stmt(TokenType::EndDefine)?);
-        return Ok(Stmt::Define(DefineStmt::new(name, block, false)));
+        return Ok(Stmt::Define(DefineStmt::new(name, block, DefineMode::Regular)));
     }
 
     fn define_inline_stmt(&mut self) -> BoxResult<Stmt> {
@@ -93,7 +95,18 @@ impl Parser {
         }
 
         let block = Box::new(self.block_stmt(TokenType::EndDefine)?);
-        return Ok(Stmt::Define(DefineStmt::new(name, block, true)));
+        return Ok(Stmt::Define(DefineStmt::new(name, block, DefineMode::Inline)));
+    }
+
+    fn define_const_stmt(&mut self) -> BoxResult<Stmt> {
+        // eat the first expr which should be a word!
+        let name = self.advance().clone();
+        if name.token_type != TokenType::Word {
+            return Err(Box::new(ExecError::new(ErrorType::ExpectedName, name)));
+        }
+
+        let block = Box::new(self.block_stmt(TokenType::EndDefine)?);
+        return Ok(Stmt::Define(DefineStmt::new(name, block, DefineMode::Constant)));
     }
 
     fn expr(&mut self) -> BoxResult<Expr> {
@@ -201,7 +214,7 @@ mod tests {
                                         ""
                                 ))))),
                     ]))),
-                false
+                DefineMode::Regular
             ))
 
         ]);
