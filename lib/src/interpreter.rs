@@ -31,6 +31,15 @@ impl Interpreter {
         })
     }
 
+    pub fn with(stmts: Vec<Stmt>) -> Self {
+        Self {
+            stmts,
+            dictionary: Dictionary::new(),
+            stack: vec![],
+            halt: false
+        }
+    }
+
     pub fn interprete(&mut self) -> Result<Vec<Compiled>, ErrorList> {
         let mut output = vec![];
         let mut errors = vec![];
