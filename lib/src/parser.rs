@@ -51,10 +51,14 @@ impl Parser {
     fn stmt(&mut self) -> BoxResult<Stmt> {
         if self.is_match(vec![TokenType::StartDefine]) {
             return self.define_stmt();
-        } else if self.is_match(vec![TokenType::StartDefine]) {
+        } else if self.is_match(vec![TokenType::StartInlineDefine]) {
             return self.define_inline_stmt();
         } else if self.is_match(vec![TokenType::StartConstDefine]) {
             return self.define_const_stmt();
+        } else if self.is_match(vec![TokenType::If]) {
+            return self.if_stmt();
+        } else if self.is_match(vec![TokenType::Loop]) {
+            return self.loop_stmt();
         } else {
             // default case
             let expr = match self.expr() {
@@ -73,7 +77,7 @@ impl Parser {
             block.push(self.stmt()?);
         }
         self.consume(delim, ErrorType::UnterminatedBlock)?;
-        return Ok(Stmt::Block(BlockStmt::new(block)));
+        return Ok(Stmt::Block(BlockStmt::new(block, self.previous().clone())));
     }
 
     fn define_stmt(&mut self) -> BoxResult<Stmt> {
@@ -107,6 +111,31 @@ impl Parser {
 
         let block = Box::new(self.block_stmt(TokenType::EndDefine)?);
         return Ok(Stmt::Define(DefineStmt::new(name, block, DefineMode::Constant)));
+    }
+
+    fn if_stmt(&mut self) -> BoxResult<Stmt> {
+        // if body ends at then or else
+        let mut block = vec![];
+        while !self.check(TokenType::Then)
+            && !self.check(TokenType::Else)
+            && !self.is_at_end() {
+            block.push(self.stmt()?);
+        }
+        let if_block = Box::new(Stmt::Block(BlockStmt::new(block, self.previous().clone())));
+        let mut else_block = None;
+        if self.check(TokenType::Else) {
+            self.advance();
+            else_block = Some(Box::new(self.block_stmt(TokenType::Then)?));
+        } else {
+            self.consume(TokenType::Then, ErrorType::UnterminatedBlock)?;
+        }
+
+        Ok(Stmt::If(IfStmt::new(if_block, else_block, self.previous().clone())))
+    }
+
+    fn loop_stmt(&mut self) -> BoxResult<Stmt> {
+        let loop_body = Box::new(self.block_stmt(TokenType::Until)?);
+        return Ok(Stmt::Loop(LoopStmt::new(loop_body, self.previous().clone())));
     }
 
     fn expr(&mut self) -> BoxResult<Expr> {
@@ -213,7 +242,14 @@ mod tests {
                                         9,
                                         ""
                                 ))))),
-                    ]))),
+                    ], Token::new(
+                        TokenType::EndDefine,
+                        Object::Word(";".into()),
+                        ";",
+                        1,
+                        11,
+                        ""
+                    )))),
                 DefineMode::Regular
             ))
 
@@ -236,6 +272,33 @@ mod tests {
 
         let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
         assert_eq!(errors_id, vec!["type: UnterminatedBlock; lexeme: +".to_string()]);
+    }
+
+    #[test]
+    pub fn it_should_fail_when_unterminated_if() {
+        let mut parser = Parser::new("= 1 if 1 1 +", "").unwrap();
+        let errors = parser.parse().unwrap_err().errors;
+
+        let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
+        assert_eq!(errors_id, vec!["type: UnterminatedBlock; lexeme: +".to_string()]);
+    }
+
+    #[test]
+    pub fn it_should_fail_when_unterminated_else_if() {
+        let mut parser = Parser::new("= 1 if 1 1 + else 2 2 +", "").unwrap();
+        let errors = parser.parse().unwrap_err().errors;
+
+        let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
+        assert_eq!(errors_id, vec!["type: UnterminatedBlock; lexeme: +".to_string()]);
+    }
+
+    #[test]
+    pub fn it_should_fail_when_unterminated_loop() {
+        let mut parser = Parser::new("loop 1 ", "").unwrap();
+        let errors = parser.parse().unwrap_err().errors;
+
+        let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
+        assert_eq!(errors_id, vec!["type: UnterminatedBlock; lexeme: 1".to_string()]);
     }
 
 }

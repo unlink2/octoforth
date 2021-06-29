@@ -13,7 +13,11 @@ pub enum ErrorType {
     UnexpectedToken,
     UnterminatedBlock,
     ExpectedName,
-    UndefinedWord
+    UndefinedWord,
+    UnsupportedObject,
+    StackUnderflow,
+    TypeError,
+    DivisionByZero
 }
 
 impl fmt::Display for ErrorType {

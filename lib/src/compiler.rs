@@ -8,7 +8,7 @@ use super::dictionary::*;
 pub struct Compiler {
     stmts: Vec<Stmt>,
     // contains words and compile-time words
-    dictionary: Dictionary,
+    dictionary: Box<Dictionary>,
 
     halt: bool
 }
@@ -19,7 +19,7 @@ impl Compiler {
         let stmts = parser.parse()?;
         Ok(Self {
             stmts,
-            dictionary: Dictionary::new(),
+            dictionary: Box::new(Dictionary::new()),
             halt: false
         })
     }
@@ -74,6 +74,13 @@ impl StmtVisitor for Compiler {
         panic!();
     }
 
+    fn visit_if(&mut self, expr: &mut IfStmt) -> BoxResult<Compiled> {
+        panic!();
+    }
+
+    fn visit_loop(&mut self, expr: &mut LoopStmt) -> BoxResult<Compiled> {
+        panic!();
+    }
 }
 
 impl ExprVisitor for Compiler {

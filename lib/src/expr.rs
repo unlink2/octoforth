@@ -15,10 +15,20 @@ impl ExprNode for Expr {
             Self::Word(word) => word.accept(visitor)
         }
     }
+
+    fn token(&mut self) -> Token {
+        match self {
+            Self::Literal(literal) => literal.literal.clone(),
+            Self::Word(word) => word.name.clone()
+        }
+    }
 }
 
 pub trait ExprNode {
     fn accept(&mut self, visitor: &mut dyn ExprVisitor) -> BoxResult<Object>;
+    fn token(&mut self) -> Token {
+        Token::new(TokenType::Invalid, Object::Nil, "", 0, 0, "")
+    }
 }
 
 pub trait ExprVisitor {

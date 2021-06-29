@@ -37,3 +37,10 @@ All words in a used module are compiled and added to the world list.
 if they are inline calls they will be used as usual.
 if they are callable words they will just be considered valid as is.
 module words are prefixed with the module's name e.g. `my_module::my_word` and are inserted in the parent's dictionary.
+
+## Platforms
+
+- platforms are implemened using simple words
+e.g. ifjmp -> makes comparison for true/false and branches
+e.g. ifjmpelse -> same but branches to else branch
+

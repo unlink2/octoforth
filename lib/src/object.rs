@@ -15,6 +15,19 @@ pub enum Object {
     Callable(Box<dyn Callable>)
 }
 
+impl Object {
+    pub fn truthy(&self) -> bool {
+        match self {
+            Object::Callable(_) => false,
+            Object::Nil => false,
+            Object::Number(i) => *i != 0,
+            Object::Real(i) => *i != 0.0,
+            Object::Str(_) => true,
+            Object::Word(_) => true,
+        }
+    }
+}
+
 /// for some reason i had to implement PartialEq by hand
 /// because of Callable
 impl PartialEq for Object {

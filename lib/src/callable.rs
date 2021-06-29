@@ -1,7 +1,10 @@
 use super::compiler::*;
 use super::stmt::Compiled;
 use super::interpreter::*;
+use super::error::*;
+use super::token::*;
 use std::fmt;
+use super::stmt::Stmt;
 
 pub trait CallableClone {
     fn box_clone(&self) -> Box<dyn Callable>;
@@ -12,11 +15,11 @@ pub trait CallableClone {
 /// rust
 /// compile should output code for the target platform
 pub trait Callable: CallableClone {
-    fn call(&mut self, _interpreter: &mut Interpreter) -> Compiled {
-        Compiled::new(vec![])
+    fn call(&mut self, _interpreter: &mut Interpreter, _token: &Token) -> BoxResult<Compiled> {
+        Ok(Compiled::new(vec![]))
     }
 
-    fn compile(&mut self, _compiler: &mut Compiler) -> Compiled {
+    fn compile(&mut self, _compiler: &mut Compiler, _token: &Token) -> Compiled {
         Compiled::new(vec![])
     }
 }
@@ -45,4 +48,19 @@ impl Clone for Box<dyn Callable> {
     }
 }
 
+/// callable with body
+#[derive(Clone)]
+pub struct StmtCallable {
+    pub stmt: Stmt
+}
 
+impl Callable for StmtCallable {
+    fn call(&mut self, interpreter: &mut Interpreter, _token: &Token) -> BoxResult<Compiled> {
+        interpreter.execute(&mut self.stmt)?;
+        Ok(Compiled::new(vec![]))
+    }
+
+    fn compile(&mut self, _compiler: &mut Compiler, _token: &Token) -> Compiled {
+        Compiled::new(vec![])
+    }
+}
