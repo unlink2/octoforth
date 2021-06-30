@@ -26,6 +26,17 @@ impl Object {
             Object::Word(_) => true,
         }
     }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Object::Callable(_) => "Callable".into(),
+            Object::Nil => "nil".into(),
+            Object::Number(i) => format!("{}", i),
+            Object::Real(i) => format!("{}", i),
+            Object::Str(s) => s.clone(),
+            Object::Word(w) => w.clone(),
+        }
+    }
 }
 
 /// for some reason i had to implement PartialEq by hand

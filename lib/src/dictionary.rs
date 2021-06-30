@@ -20,18 +20,28 @@ impl Dictionary {
         }
     }
 
-    pub fn define(&mut self, name: &str, value: &Object) {
-        self.words.insert(name.into(), value.clone());
+    pub fn get_full_name(name: &str, prefix: &Option<String>) -> String {
+        match prefix {
+            Some(prefix) => format!("{}::{}", prefix, name),
+            _ => name.into()
+        }
     }
 
-    pub fn get(&self, name: &Token) -> BoxResult<Object> {
-        if !self.words.contains_key(&name.lexeme) {
+    pub fn define(&mut self, name: &str, prefix: &Option<String>, value: &Object) {
+        let full_name = Self::get_full_name(name, prefix);
+        self.words.insert(full_name, value.clone());
+    }
+
+    pub fn get(&self, name: &Token, prefix: &Option<String>) -> BoxResult<Object> {
+        let full_name = Self::get_full_name(&name.lexeme, prefix);
+
+        if !self.words.contains_key(&full_name) {
             match &self.parent {
-                Some(parent) => return parent.get(name),
+                Some(parent) => return parent.get(name, prefix),
                 _ => return Err(Box::new(ExecError::new(ErrorType::UndefinedWord, name.clone())))
             }
         } else {
-            match self.words.get(&name.lexeme) {
+            match self.words.get(&full_name) {
                 Some(obj) => return Ok(obj.clone()),
                 _ => return Err(Box::new(ExecError::new(ErrorType::UndefinedWord, name.clone())))
             }
@@ -47,8 +57,27 @@ mod tests {
     fn it_should_define_value() {
         let mut env = Dictionary::new();
 
-        env.define("name", &Object::Number(100));
-        assert_eq!(env.get(&Token::new(TokenType::Word, Object::Nil, "name", 0, 0, "")).unwrap(),
+        env.define("name", &None, &Object::Number(100));
+        assert_eq!(env.get(&Token::new(TokenType::Word, Object::Nil, "name", 0, 0, ""), &None).unwrap(),
+            Object::Number(100));
+    }
+
+    #[test]
+    fn it_should_define_value_with_mod() {
+        let mut env = Dictionary::new();
+
+        env.define("name", &Some("module".into()), &Object::Number(100));
+        assert_eq!(env.get(&Token::new(TokenType::Word, Object::Nil, "module::name", 0, 0, ""), &None).unwrap(),
+            Object::Number(100));
+    }
+
+    #[test]
+    fn it_should_define_value_with_mod_prefixed() {
+        let mut env = Dictionary::new();
+
+        env.define("name", &Some("module".into()), &Object::Number(100));
+        assert_eq!(env.get(&Token::new(TokenType::Word, Object::Nil, "name", 0, 0, ""), &Some("module".into()))
+            .unwrap(),
             Object::Number(100));
     }
 
@@ -56,19 +85,19 @@ mod tests {
     fn it_should_find_in_parent() {
         let mut parent = Dictionary::new();
 
-        parent.define("name", &Object::Number(100));
+        parent.define("name", &None, &Object::Number(100));
 
         let env = Dictionary::with(Some(Box::new(parent)));
 
-        assert_eq!(env.get(&Token::new(TokenType::Word, Object::Nil, "name", 0, 0, "")).unwrap(),
+        assert_eq!(env.get(&Token::new(TokenType::Word, Object::Nil, "name", 0, 0, ""), &None).unwrap(),
             Object::Number(100));
     }
 
     #[test]
     #[should_panic]
     fn it_should_throw_reference_error() {
-        let mut env = Dictionary::new();
-        assert_eq!(env.get(&Token::new(TokenType::Word, Object::Nil, "name", 0, 0, "")).unwrap(),
+        let env = Dictionary::new();
+        assert_eq!(env.get(&Token::new(TokenType::Word, Object::Nil, "name", 0, 0, ""), &None).unwrap(),
             Object::Number(100));
     }
 }

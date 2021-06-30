@@ -17,7 +17,9 @@ pub enum ErrorType {
     UnsupportedObject,
     StackUnderflow,
     TypeError,
-    DivisionByZero
+    DivisionByZero,
+    InvalidString,
+    IOError
 }
 
 impl fmt::Display for ErrorType {

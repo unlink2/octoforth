@@ -59,6 +59,12 @@ impl Parser {
             return self.if_stmt();
         } else if self.is_match(vec![TokenType::Loop]) {
             return self.loop_stmt();
+        } else if self.is_match(vec![TokenType::Asm]) {
+            return self.asm_stmt();
+        } else if self.is_match(vec![TokenType::Mod]) {
+            return self.mod_stmt();
+        } else if self.is_match(vec![TokenType::Use]) {
+            return self.use_stmt();
         } else {
             // default case
             let expr = match self.expr() {
@@ -111,6 +117,21 @@ impl Parser {
 
         let block = Box::new(self.block_stmt(TokenType::EndDefine)?);
         return Ok(Stmt::Define(DefineStmt::new(name, block, DefineMode::Constant)));
+    }
+
+    fn mod_stmt(&mut self) -> BoxResult<Stmt> {
+        let mod_name = self.consume(TokenType::Word, ErrorType::UnexpectedToken)?;
+        return Ok(Stmt::Mod(ModStmt::new(mod_name)));
+    }
+
+    fn use_stmt(&mut self) -> BoxResult<Stmt> {
+        let mod_name = self.consume(TokenType::Str, ErrorType::UnexpectedToken)?;
+        return Ok(Stmt::Use(UseStmt::new(mod_name.literal.clone(), mod_name)));
+    }
+
+    fn asm_stmt(&mut self) -> BoxResult<Stmt> {
+        let code = self.consume(TokenType::Str, ErrorType::UnexpectedToken)?;
+        return Ok(Stmt::Asm(AsmStmt::new(code.literal.clone(), code)));
     }
 
     fn if_stmt(&mut self) -> BoxResult<Stmt> {

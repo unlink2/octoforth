@@ -5,8 +5,13 @@ use super::expr::*;
 use super::object::*;
 use super::dictionary::*;
 use super::callable::*;
+use super::compiler::*;
 use super::interpreter::*;
 use super::token::*;
+
+/**
+ * Interpreted builtins
+ */
 
 #[derive(Clone)]
 pub struct Add;
@@ -196,7 +201,7 @@ pub struct DropTop;
 
 impl Callable for DropTop {
     fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
-        let x = interpreter.pop(token)?;
+        let _x = interpreter.pop(token)?;
 
         Ok(Compiled::new(vec![]))
     }
@@ -226,6 +231,50 @@ impl Callable for NotEqual {
 
         interpreter.push(Object::Number(if y != x { 1 } else { 0 }));
 
+        Ok(Compiled::new(vec![]))
+    }
+}
+
+/**
+ * Compiled builtins
+ */
+
+#[derive(Clone)]
+pub struct Int8;
+
+impl Callable for Int8 {
+    fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
+        compiler.stack_mode = StackMode::Int8;
+        Ok(Compiled::new(vec![]))
+    }
+}
+
+#[derive(Clone)]
+pub struct Int16;
+
+impl Callable for Int16 {
+    fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
+        compiler.stack_mode = StackMode::Int16;
+        Ok(Compiled::new(vec![]))
+    }
+}
+
+#[derive(Clone)]
+pub struct Int32;
+
+impl Callable for Int32 {
+    fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
+        compiler.stack_mode = StackMode::Int32;
+        Ok(Compiled::new(vec![]))
+    }
+}
+
+#[derive(Clone)]
+pub struct Int64;
+
+impl Callable for Int64 {
+    fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
+        compiler.stack_mode = StackMode::Int64;
         Ok(Compiled::new(vec![]))
     }
 }

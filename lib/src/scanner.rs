@@ -26,6 +26,9 @@ impl Scanner {
         keywords.insert(";".to_string(), TokenType::EndDefine);
         keywords.insert(":i".to_string(), TokenType::StartInlineDefine);
         keywords.insert(":c".to_string(), TokenType::StartConstDefine);
+        keywords.insert(":asm".to_string(), TokenType::Asm);
+        keywords.insert(":use".to_string(), TokenType::Use);
+        keywords.insert(":mod".to_string(), TokenType::Mod);
 
         Self {
             source: source.into(),

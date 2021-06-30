@@ -16,7 +16,7 @@ impl ExprNode for Expr {
         }
     }
 
-    fn token(&mut self) -> Token {
+    fn token(&self) -> Token {
         match self {
             Self::Literal(literal) => literal.literal.clone(),
             Self::Word(word) => word.name.clone()
@@ -26,7 +26,7 @@ impl ExprNode for Expr {
 
 pub trait ExprNode {
     fn accept(&mut self, visitor: &mut dyn ExprVisitor) -> BoxResult<Object>;
-    fn token(&mut self) -> Token {
+    fn token(&self) -> Token {
         Token::new(TokenType::Invalid, Object::Nil, "", 0, 0, "")
     }
 }

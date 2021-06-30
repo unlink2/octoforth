@@ -19,6 +19,8 @@ pub struct Interpreter {
     // contains words and compile-time words
     dictionary: Box<Dictionary>,
 
+    mod_name: Option<String>,
+
     halt: bool
 }
 
@@ -26,19 +28,19 @@ impl Interpreter {
     pub fn builtins() -> Box<Dictionary> {
         let mut builtins = Box::new(Dictionary::new());
 
-        builtins.define("+", &Object::Callable(Box::new(Add)));
-        builtins.define("-", &Object::Callable(Box::new(Sub)));
-        builtins.define("/", &Object::Callable(Box::new(Div)));
-        builtins.define("*", &Object::Callable(Box::new(Mul)));
-        builtins.define("%", &Object::Callable(Box::new(Mod)));
+        builtins.define("+", &None, &Object::Callable(Box::new(Add)));
+        builtins.define("-", &None, &Object::Callable(Box::new(Sub)));
+        builtins.define("/", &None, &Object::Callable(Box::new(Div)));
+        builtins.define("*", &None, &Object::Callable(Box::new(Mul)));
+        builtins.define("%", &None, &Object::Callable(Box::new(Mod)));
 
-        builtins.define("&", &Object::Callable(Box::new(And)));
-        builtins.define("|", &Object::Callable(Box::new(Or)));
-        builtins.define("^", &Object::Callable(Box::new(Xor)));
-        builtins.define("~", &Object::Callable(Box::new(Not)));
+        builtins.define("&", &None, &Object::Callable(Box::new(And)));
+        builtins.define("|", &None, &Object::Callable(Box::new(Or)));
+        builtins.define("^", &None, &Object::Callable(Box::new(Xor)));
+        builtins.define("~", &None, &Object::Callable(Box::new(Not)));
 
-        builtins.define("drop", &Object::Callable(Box::new(DropTop)));
-        builtins.define("dup", &Object::Callable(Box::new(Dup)));
+        builtins.define("drop", &None, &Object::Callable(Box::new(DropTop)));
+        builtins.define("dup", &None, &Object::Callable(Box::new(Dup)));
 
         builtins
     }
@@ -50,6 +52,7 @@ impl Interpreter {
             stmts,
             dictionary: Self::builtins(),
             stack: vec![],
+            mod_name: None,
             halt: false
         })
     }
@@ -59,6 +62,7 @@ impl Interpreter {
             stmts,
             dictionary: Self::builtins(),
             stack: vec![],
+            mod_name: None,
             halt: false
         }
     }
@@ -155,10 +159,9 @@ impl StmtVisitor for Interpreter {
     }
 
     fn visit_define(&mut self, def: &mut DefineStmt) -> BoxResult<Compiled> {
-        match def.mode {
-            _ => self.dictionary.define(&def.name.lexeme,
-                &Object::Callable(Box::new(StmtCallable {stmt: *def.body.clone()})))
-        }
+        self.dictionary.define(&def.name.lexeme,
+            &self.mod_name,
+            &Object::Callable(Box::new(StmtCallable {stmt: *def.body.clone(), mode: DefineMode::Regular})));
         Ok(Compiled::new(vec![]))
     }
 
@@ -186,6 +189,18 @@ impl StmtVisitor for Interpreter {
 
         Ok(Compiled::new(vec![]))
     }
+
+    fn visit_use(&mut self, _stmt: &mut UseStmt) -> BoxResult<Compiled> {
+        Ok(Compiled::new(vec![]))
+    }
+
+    fn visit_mod(&mut self, _stmt: &mut ModStmt) -> BoxResult<Compiled> {
+        Ok(Compiled::new(vec![]))
+    }
+
+    fn visit_asm(&mut self, _stmt: &mut AsmStmt) -> BoxResult<Compiled> {
+        Ok(Compiled::new(vec![]))
+    }
 }
 
 impl ExprVisitor for Interpreter {
@@ -194,7 +209,7 @@ impl ExprVisitor for Interpreter {
     }
 
     fn visit_word(&mut self, expr: &mut WordExpr) -> BoxResult<Object> {
-        self.dictionary.get(&expr.name)
+        self.dictionary.get(&expr.name, &self.mod_name)
     }
 }
 

@@ -4,6 +4,7 @@ use super::interpreter::*;
 use super::error::*;
 use super::token::*;
 use std::fmt;
+use super::stmt::*;
 use super::stmt::Stmt;
 
 pub trait CallableClone {
@@ -19,8 +20,12 @@ pub trait Callable: CallableClone {
         Ok(Compiled::new(vec![]))
     }
 
-    fn compile(&mut self, _compiler: &mut Compiler, _token: &Token) -> Compiled {
-        Compiled::new(vec![])
+    fn compile(&mut self, _compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
+        Ok(Compiled::new(vec![]))
+    }
+
+    fn mode(&self) -> DefineMode {
+        DefineMode::Regular
     }
 }
 
@@ -51,7 +56,8 @@ impl Clone for Box<dyn Callable> {
 /// callable with body
 #[derive(Clone)]
 pub struct StmtCallable {
-    pub stmt: Stmt
+    pub stmt: Stmt,
+    pub mode: DefineMode
 }
 
 impl Callable for StmtCallable {
@@ -60,7 +66,28 @@ impl Callable for StmtCallable {
         Ok(Compiled::new(vec![]))
     }
 
-    fn compile(&mut self, _compiler: &mut Compiler, _token: &Token) -> Compiled {
-        Compiled::new(vec![])
+    fn compile(&mut self, _compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
+        Ok(Compiled::new(vec![]))
+    }
+}
+
+/// compiled callable
+#[derive(Clone)]
+pub struct CompiledCallable {
+    pub compiled: Compiled,
+    pub mode: DefineMode
+}
+
+impl Callable for CompiledCallable {
+    fn call(&mut self, interpreter: &mut Interpreter, _token: &Token) -> BoxResult<Compiled> {
+        Ok(Compiled::new(vec![]))
+    }
+
+    fn compile(&mut self, _compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
+        Ok(self.compiled.clone())
+    }
+
+    fn mode(&self) -> DefineMode {
+        self.mode
     }
 }

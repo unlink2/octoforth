@@ -24,6 +24,10 @@ pub enum TokenType {
 
     StartInlineDefine,
 
+    Asm, // :asm "<asm code>"
+    Use, // :use "file"
+    Mod, // :mod module_name
+
     EndOfFile,
 }
 
