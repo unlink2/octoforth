@@ -1,10 +1,19 @@
 
 :i compile :asm "__ARG__:\n" ;
-:i push8 :asm "lda #__ARG__\npha";
+:i push8 :asm "    lda #__ARG__
+    pha
+" ;
 
-:i dup :asm "pla\npha\npha\n" ;
-:i call :asm "jsr __ARG__" ;
-:i return :asm "rts\n" ;
-:i + :asm "pla\nsta $00\npla\nclc\nadc $00\npha" ;
+:i dup :asm "    pla
+    pha
+    pha" ;
+:i call :asm "    jsr __ARG__" ;
+:i return :asm "\n    rts\n" ;
+:i + :asm "    pla
+    sta $00
+    pla
+    clc
+    adc $00
+    pha" ;
 
-:i forever :asm "forever:\njmp forever\n" ;
+:i forever :asm "forever:\n    jmp forever\n" ;
