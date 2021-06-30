@@ -1,9 +1,6 @@
-use super::parser::*;
 use super::stmt::*;
 use super::error::*;
-use super::expr::*;
 use super::object::*;
-use super::dictionary::*;
 use super::callable::*;
 use super::compiler::*;
 use super::interpreter::*;

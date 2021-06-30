@@ -20,9 +20,21 @@ impl Dictionary {
         }
     }
 
+    pub fn extend(&mut self, other: &Dictionary) {
+        self.words.extend(other.words.clone())
+    }
+
     pub fn get_full_name(name: &str, prefix: &Option<String>) -> String {
         match prefix {
-            Some(prefix) => format!("{}::{}", prefix, name),
+            Some(prefix) =>
+            {
+                let full_prefix = format!("{}::", prefix);
+                if name.starts_with(&full_prefix) {
+                    name.to_string()
+                } else {
+                    format!("{}{}", full_prefix, name)
+                }
+            },
             _ => name.into()
         }
     }

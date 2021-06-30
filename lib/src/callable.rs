@@ -79,7 +79,7 @@ pub struct CompiledCallable {
 }
 
 impl Callable for CompiledCallable {
-    fn call(&mut self, interpreter: &mut Interpreter, _token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, _interpreter: &mut Interpreter, _token: &Token) -> BoxResult<Compiled> {
         Ok(Compiled::new(vec![]))
     }
 

@@ -22,6 +22,14 @@ impl Compiled {
         return Ok(result);
     }
 
+    pub fn flatten_bytes(data: &mut Vec<Compiled>) -> Compiled {
+        let mut result = Compiled::new(vec![]);
+        for d in data {
+            result.data.append(&mut d.data);
+        }
+        return result;
+    }
+
     pub fn new(data: Vec<u8>) -> Self {
         Self {data}
     }

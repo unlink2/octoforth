@@ -11,6 +11,9 @@ use super::interpreter::*;
 use std::str;
 use std::path::{Path, PathBuf};
 use super::filesystem::*;
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::collections::HashSet;
 
 pub enum StackMode {
     Int8,
@@ -27,6 +30,10 @@ pub struct Compiler {
     mod_name: Option<String>,
     pub stack_mode: StackMode,
     pub filesystem: Box<dyn FileSystemManager>,
+
+    // tracks which modules have already been compiled
+    // skips compilation of such modules
+    pub module_tracker: Rc<RefCell<HashSet<String>>>,
 
     parent_dir: PathBuf,
 
@@ -64,6 +71,7 @@ impl Compiler {
             mod_name: None,
             stack_mode: StackMode::Int8,
             filesystem: Box::new(LocalFileSystem),
+            module_tracker: Rc::new(RefCell::new(HashSet::new())),
             parent_dir: Path::new(path).parent().unwrap_or(Path::new(path)).to_path_buf(),
             halt: false
         })
@@ -165,7 +173,7 @@ impl StmtVisitor for Compiler {
             Object::Number(n) => {
                 // in compiled mode we call the push8,16,32,64 words
                 // depending on the compiler mode
-                let mut token = stmt.token();
+                let token = stmt.token();
                 let r;
                 match self.stack_mode {
                     StackMode::Int8 => {
@@ -217,8 +225,10 @@ impl StmtVisitor for Compiler {
 
                 // call compile word
                 let token = stmt.token();
-                let mut prefix = self.call_word(token, "compile", &Object::Word(stmt.name.lexeme.clone()))?;
+                let mut prefix = self.call_word(token.clone(), "compile", &Object::Word(stmt.name.lexeme.clone()))?;
+                let mut postfix = self.call_word(token, "return", &Object::Word(stmt.name.lexeme.clone()))?;
                 prefix.data.append(&mut compiled_exec.data);
+                prefix.data.append(&mut postfix.data);
                 let compiled = Compiled::new(prefix.data);
 
                 self.dictionary.define(&stmt.name.lexeme,
@@ -292,12 +302,31 @@ impl StmtVisitor for Compiler {
         // compile a module, get all the code and
         // return the compilation output
         // merge dictionaries
+        // modules are ketp track of and only compiled once
+        // using simple hashing
         let path = match &stmt.path {
             Object::Str(s) => s,
             _ => return Err(Box::new(ExecError::new(ErrorType::TypeError, stmt.token())))
         };
-        let mut compiler = Compiler::from_file(&path)?;
-        compiler.compile()?;
+
+        let fs = LocalFileSystem;
+        let source = fs.read_file(path)?;
+
+        // only compile if we do not have the compiled code already!
+        if !self.module_tracker.as_ref().borrow().contains(&source) {
+            self.module_tracker.as_ref().borrow_mut().insert(source.clone());
+
+            let mut compiler = Compiler::new(&source, &path)?;
+            compiler.module_tracker = self.module_tracker.clone();
+            let mut compiled = compiler.compile()?;
+
+            let flattened = Compiled::flatten_bytes(&mut compiled);
+
+            // merge dictionaries
+            self.dictionary.as_mut().extend(compiler.dictionary.as_ref());
+
+            return Ok(flattened);
+        }
         Ok(Compiled::new(vec![]))
     }
 
@@ -340,7 +369,10 @@ mod tests {
     #[test]
     fn it_should_call_word() {
         let mut compiler = Compiler::new(":i compile :asm \"__ARG__:\n\" ;
-            :i call :asm \"jsr __ARG__\" ; : my_word :asm \"lda #100\nrts\" ; my_word", "").unwrap();
+            :i call :asm \"jsr __ARG__\" ;
+            :i return :asm \"rts\" ;
+            : my_word :asm \"lda #100\n\" ;
+            my_word", "").unwrap();
         let result = compiler.compile().unwrap();
         let output = Compiled::flatten(result).unwrap();
 
@@ -401,5 +433,21 @@ mod tests {
         let output = Compiled::flatten(result).unwrap();
 
         assert_eq!(output, "lda #4 pha\n".to_string()) ;
+    }
+
+    #[test]
+    fn it_should_use_mod_keyword() {
+        let mut compiler = Compiler::new("
+            :mod Tests
+            :i compile :asm \":\" ;
+            :i call :asm \":\" ;
+            :i return :asm \"\nrts\n\" ;
+            : test :asm \"lda #00\" ;
+            Tests::test
+            ", "").unwrap();
+        let result = compiler.compile().unwrap();
+        let output = Compiled::flatten(result).unwrap();
+
+        assert_eq!(output, ":lda #00\nrts\n\n:\n".to_string()) ;
     }
 }

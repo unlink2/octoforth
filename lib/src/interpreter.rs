@@ -194,8 +194,10 @@ impl StmtVisitor for Interpreter {
         Ok(Compiled::new(vec![]))
     }
 
-    fn visit_mod(&mut self, _stmt: &mut ModStmt) -> BoxResult<Compiled> {
+    fn visit_mod(&mut self, stmt: &mut ModStmt) -> BoxResult<Compiled> {
+        self.mod_name = Some(stmt.name.lexeme.clone());
         Ok(Compiled::new(vec![]))
+
     }
 
     fn visit_asm(&mut self, _stmt: &mut AsmStmt) -> BoxResult<Compiled> {
