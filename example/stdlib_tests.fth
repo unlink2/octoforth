@@ -1,4 +1,6 @@
 
+:i init :asm "lda #00" ;
+
 :i compile :asm "__ARG__:\n" ;
 :i push8 :asm "    lda #__ARG__
     pha
@@ -17,3 +19,4 @@
     pha" ;
 
 :i forever :asm "forever:\n    jmp forever\n" ;
+
