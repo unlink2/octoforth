@@ -45,7 +45,19 @@ impl ExecError {
     fn to_string(&self) -> &str {
         match self.error_type {
             ErrorType::InvalidToken => "Bad token",
-            _ => "Missing description"
+            ErrorType::UnterminatedString => "Unterminated string",
+            ErrorType::BadNumber => "Bad number",
+            ErrorType::NumberParseError => "Number parser error",
+            ErrorType::UnexpectedToken => "Unexpected token",
+            ErrorType::UnterminatedBlock => "Unterminated block",
+            ErrorType::ExpectedName => "Expected name",
+            ErrorType::UndefinedWord => "Undefined word",
+            ErrorType::UnsupportedObject => "Object type not supported",
+            ErrorType::StackUnderflow => "Stack underflow",
+            ErrorType::TypeError => "Type error",
+            ErrorType::DivisionByZero => "Division by 0",
+            ErrorType::InvalidString => "Invalid string",
+            ErrorType::IOError => "IO Error"
         }
     }
 }
@@ -88,7 +100,11 @@ impl std::error::Error for ErrorList {
 
 impl fmt::Display for ErrorList {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Error list {:?}", self.errors)
+        let mut output = "".to_string();
+        for err in &self.errors[..] {
+            output = format!("{}\n", err);
+        }
+        write!(f, "{}", output)
     }
 }
 

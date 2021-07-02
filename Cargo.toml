@@ -1,3 +1,3 @@
 [workspace]
-members = ["lib", "repl"]
+members = ["lib", "client"]
 
