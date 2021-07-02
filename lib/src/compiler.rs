@@ -271,17 +271,17 @@ impl StmtVisitor for Compiler {
         match &mut stmt.else_block {
             Some(else_block) => {
                 // if-else
-                compiled.data.append(&mut self.call_word(token.clone(), "ifelsestart", &Object::Nil)?.data);
+                compiled.data.append(&mut self.call_word(token.clone(), "__ifelse", &Object::Nil)?.data);
                 compiled.data.append(&mut self.execute(&mut stmt.then_block)?.data);
-                compiled.data.append(&mut self.call_word(token.clone(), "elsestart", &Object::Nil)?.data);
+                compiled.data.append(&mut self.call_word(token.clone(), "__else", &Object::Nil)?.data);
                 compiled.data.append(&mut self.execute(else_block)?.data);
-                compiled.data.append(&mut self.call_word(token.clone(), "ifend", &Object::Nil)?.data);
+                compiled.data.append(&mut self.call_word(token.clone(), "__then", &Object::Nil)?.data);
             },
             _ => {
                 // if only
-                compiled.data.append(&mut self.call_word(token.clone(), "ifstart", &Object::Nil)?.data);
+                compiled.data.append(&mut self.call_word(token.clone(), "__if", &Object::Nil)?.data);
                 compiled.data.append(&mut self.execute(&mut stmt.then_block)?.data);
-                compiled.data.append(&mut self.call_word(token.clone(), "ifend", &Object::Nil)?.data);
+                compiled.data.append(&mut self.call_word(token.clone(), "__then", &Object::Nil)?.data);
             }
         }
         return Ok(compiled);
@@ -291,9 +291,9 @@ impl StmtVisitor for Compiler {
         let mut compiled = Compiled::new(vec![]);
 
         let token = stmt.token();
-        compiled.data.append(&mut self.call_word(token.clone(), "loopstart", &Object::Nil)?.data);
+        compiled.data.append(&mut self.call_word(token.clone(), "__loop", &Object::Nil)?.data);
         compiled.data.append(&mut self.execute(&mut stmt.block)?.data);
-        compiled.data.append(&mut self.call_word(token.clone(), "untilcheck", &Object::Nil)?.data);
+        compiled.data.append(&mut self.call_word(token.clone(), "__until", &Object::Nil)?.data);
 
         return Ok(compiled);
     }
@@ -382,8 +382,8 @@ mod tests {
     #[test]
     fn it_should_use_if() {
         let mut compiler = Compiler::new("
-            :i ifstart :asm \"pla bne :+ \" ;
-            :i ifend :asm \" : \" ;
+            :i __if :asm \"pla bne :+ \" ;
+            :i __then :asm \" : \" ;
             :i push8 :asm \"lda #__ARG__ pha \" ;
             1 if 2 then
             ", "").unwrap();
@@ -396,9 +396,9 @@ mod tests {
     #[test]
     fn it_should_use_if_else() {
         let mut compiler = Compiler::new("
-            :i ifelsestart :asm \"pla bne :+ \" ;
-            :i elsestart :asm \" jmp :++ : \" ;
-            :i ifend :asm \" : \" ;
+            :i __ifelse :asm \"pla bne :+ \" ;
+            :i __else :asm \" jmp :++ : \" ;
+            :i __then :asm \" : \" ;
             :i push8 :asm \"lda #__ARG__ pha \" ;
             1 if 2 else 3 then
             ", "").unwrap();
@@ -411,8 +411,8 @@ mod tests {
     #[test]
     fn it_should_use_loops() {
         let mut compiler = Compiler::new("
-            :i loopstart :asm \" : \" ;
-            :i untilcheck :asm \"pla ben :- \" ;
+            :i __loop :asm \" : \" ;
+            :i __until :asm \"pla ben :- \" ;
             :i push8 :asm \" lda #__ARG__ pha \" ;
             loop 1 until
             ", "").unwrap();

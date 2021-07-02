@@ -5,7 +5,6 @@ initfth
 
 1 1 +
 
-loop
-    1 +
-1 until
-
+run
+   1 +f
+forever
