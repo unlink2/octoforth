@@ -92,6 +92,12 @@ impl Scanner {
                 Ok(token) => token,
                 Err(err) => return Err(err)
             },
+            '\'' => {
+                match self.scan_char(c) {
+                    Ok(token) => token,
+                    Err(err) => return Err(err)
+                }
+            },
             '\0' => {
                 return Ok(None);
             },
@@ -141,6 +147,42 @@ impl Scanner {
         };
 
         return Ok(Some(token));
+    }
+
+    fn scan_char(&mut self, quote: char) -> BoxResult<Token> {
+        let character = self.advance();
+
+        let c = if character == '\\' {
+            let escaped = Self::unescape_char(character, self.peek());
+            if escaped.0 {
+                self.advance();
+            }
+            escaped.1
+        } else {
+            character
+        };
+
+        let end = self.advance();
+        if end != quote {
+            return Err(Box::new(
+                    ExecError::new(
+                        ErrorType::UnterminatedString,
+                        Token::new(
+                            TokenType::Invalid,
+                            Object::Nil,
+                            "",
+                            self.line,
+                            self.start,
+                            &self.path))));
+        }
+
+        return Ok(Token::new(
+                TokenType::Number,
+                Object::Number(c as ObjNumber),
+                &self.source[self.start..self.current].to_string(),
+                self.line,
+                self.start,
+                &self.path));
     }
 
     fn scan_str(&mut self, quote: char) -> BoxResult<Token> {
@@ -649,6 +691,28 @@ mod tests {
                         "")]);
     }
 
+    #[test]
+    fn it_should_scan_chars() {
+        let mut scanner = Scanner::new("'A'", "");
+
+        let tokens = scanner.scan().unwrap();
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Number,
+                    Object::Number('A' as ObjNumber),
+                    "'A'",
+                    1,
+                    0,
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        3,
+                        "")]);
+    }
+
     // failure tests
     #[test]
     fn it_should_not_scan_invalid_decimal_numbers() {
@@ -697,6 +761,17 @@ mod tests {
     #[test]
     fn it_should_not_scan_unterminated_strings() {
         let mut scanner = Scanner::new("\"Hello World!", "");
+
+        let errors = scanner.scan().unwrap_err().errors;
+
+        // get messages
+        let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
+        assert_eq!(errors_id, vec!["type: UnterminatedString; lexeme: ".to_string()]);
+    }
+
+    #[test]
+    fn it_should_not_scan_unterminated_char() {
+        let mut scanner = Scanner::new("\'A1", "");
 
         let errors = scanner.scan().unwrap_err().errors;
 
