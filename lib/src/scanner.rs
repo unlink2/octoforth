@@ -376,7 +376,9 @@ impl Scanner {
             || c == '<'
             || c == '='
             || c == ':'
-            || c == ';';
+            || c == ';'
+            || c == '@'
+            || c == '!';
     }
 
     fn is_digit(c: char) -> bool {
@@ -749,7 +751,7 @@ mod tests {
 
     #[test]
     fn it_should_not_scan_invalid_tokens() {
-        let mut scanner = Scanner::new("@", "");
+        let mut scanner = Scanner::new("[", "");
 
         let errors = scanner.scan().unwrap_err().errors;
 
