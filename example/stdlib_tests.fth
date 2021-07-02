@@ -1,22 +1,36 @@
-
-:i init :asm "lda #00" ;
-
 :i compile :asm "__ARG__:\n" ;
-:i push8 :asm "    lda #__ARG__
-    pha
+
+:i initfth :asm "   ldx FTHPTR\n" ;
+
+:i push8im :asm "    sta FTHSTACK,x
+    inx
 " ;
 
-:i dup :asm "    pla
-    pha
-    pha" ;
+:i push8 :asm "    lda #__ARG__\n" push8im ;
+
+:i pull8 :asm "    dex
+    lda FTHSTACK,x
+" ;
+
+:i dup pull8 push8im push8im ;
 :i call :asm "    jsr __ARG__" ;
 :i return :asm "\n    rts\n" ;
-:i + :asm "    pla
-    sta $00
-    pla
-    clc
-    adc $00
-    pha" ;
 
-:i forever :asm "forever:\n    jmp forever\n" ;
+:i start :asm "start:\n" ;
 
+:i +
+    pull8
+    :asm "    sta $80
+    "
+    pull8
+    :asm "    clc
+    adc $80
+    "
+    push8im ;
+
+:i loopstart
+    :asm "@loop:\n" ;
+
+:i untilcheck
+    pull8
+    :asm "    bne @loop" ;

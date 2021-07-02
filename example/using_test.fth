@@ -1,10 +1,11 @@
 :use "./stdlib_tests.fth"
 
-: test dup ;
+start
+initfth
 
-1 test
+1 1 +
 
-1 2 +
-
-forever
+loop
+    1 +
+1 until
 

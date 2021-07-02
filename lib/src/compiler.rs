@@ -44,10 +44,10 @@ impl Compiler {
     pub fn builtins() -> Box<Dictionary> {
         let mut builtins = Box::new(Dictionary::new());
 
-        builtins.define("i8", &None, &Object::Callable(Box::new(Int8)));
-        builtins.define("i16", &None, &Object::Callable(Box::new(Int16)));
-        builtins.define("i32", &None, &Object::Callable(Box::new(Int32)));
-        builtins.define("i64", &None, &Object::Callable(Box::new(Int64)));
+        builtins.define(":i8", &None, &Object::Callable(Box::new(Int8)));
+        builtins.define(":i16", &None, &Object::Callable(Box::new(Int16)));
+        builtins.define(":i32", &None, &Object::Callable(Box::new(Int32)));
+        builtins.define(":i64", &None, &Object::Callable(Box::new(Int64)));
 
         builtins
     }
