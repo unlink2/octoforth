@@ -1,0 +1,16 @@
+[package]
+name = "octoforthc"
+version = "0.1.0"
+authors = ["Lukas Krickl <lukas@krickl.dev>"]
+description = "octoforth frontend"
+license = "MIT"
+homepage = "https://github.com/unlink2/octoforth"
+edition = "2018"
+
+[[bin]]
+name = "octoforthc"
+path = "src/main.rs"
+
+[dependencies]
+octoforth = {path = "../lib"}
+clap = "3.0.0-beta.2"
