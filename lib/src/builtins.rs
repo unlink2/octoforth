@@ -244,6 +244,10 @@ impl Callable for Int8 {
         compiler.stack_mode = StackMode::Int8;
         Ok(Compiled::new(vec![]))
     }
+
+    fn mode(&self) -> DefineMode {
+        DefineMode::Inline
+    }
 }
 
 #[derive(Clone)]
@@ -253,6 +257,10 @@ impl Callable for Int16 {
     fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
         compiler.stack_mode = StackMode::Int16;
         Ok(Compiled::new(vec![]))
+    }
+
+    fn mode(&self) -> DefineMode {
+        DefineMode::Inline
     }
 }
 
@@ -264,6 +272,10 @@ impl Callable for Int32 {
         compiler.stack_mode = StackMode::Int32;
         Ok(Compiled::new(vec![]))
     }
+
+    fn mode(&self) -> DefineMode {
+        DefineMode::Inline
+    }
 }
 
 #[derive(Clone)]
@@ -273,5 +285,9 @@ impl Callable for Int64 {
     fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
         compiler.stack_mode = StackMode::Int64;
         Ok(Compiled::new(vec![]))
+    }
+
+    fn mode(&self) -> DefineMode {
+        DefineMode::Inline
     }
 }
