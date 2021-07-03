@@ -16,3 +16,6 @@ to any target assembler.
 - optimize code (e.g. push and pull can be optimized away if they follow each other)
   this should be done with a simple static analysis and special words that
   execute operations that can be optimized. this should only apply when -o1 is set
+  another easy optimization is to treat '@' and '!' in a special way
+  if they have a constant in front of them we can do an immediate load
+  instead of loading from a realtive address e.g. on 6502
