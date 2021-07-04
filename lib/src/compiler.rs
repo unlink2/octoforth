@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use super::filesystem::*;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 pub enum StackMode {
     Int8,
@@ -33,7 +33,7 @@ pub struct Compiler {
 
     // tracks which modules have already been compiled
     // skips compilation of such modules
-    pub module_tracker: Rc<RefCell<HashSet<String>>>,
+    pub module_tracker: Rc<RefCell<HashMap<String, Box<Dictionary>>>>,
 
     parent_dir: PathBuf,
 
@@ -71,7 +71,7 @@ impl Compiler {
             mod_name: None,
             stack_mode: StackMode::Int8,
             filesystem: Box::new(LocalFileSystem),
-            module_tracker: Rc::new(RefCell::new(HashSet::new())),
+            module_tracker: Rc::new(RefCell::new(HashMap::new())),
             parent_dir: Path::new(path).parent().unwrap_or(Path::new(path)).to_path_buf(),
             halt: false
         })
@@ -132,7 +132,7 @@ impl Compiler {
     /// know how to assemble it.
     fn call_word(&mut self, mut token: Token, name: &str, object: &Object) -> BoxResult<Compiled> {
         token.lexeme = name.into();
-        let mut call_obj = self.dictionary.get(&token, &self.mod_name)?;
+        let mut call_obj = self.dictionary.get_any(&token, vec![&None, &self.mod_name])?;
         let compiled = match &mut call_obj {
             Object::Callable(c) => {
                 c.compile(self, &token)?
@@ -142,8 +142,14 @@ impl Compiler {
 
         // apply constants
         let mut cstr = str::from_utf8(&compiled.data)?.to_string();
-        cstr = cstr.replace("__ARG__", &object.to_string());
-        cstr = cstr.replace("__WORD__", &token.lexeme);
+        match object {
+            Object::Callable(_) | Object::Word(_) => cstr = cstr.replace("__ARG__",
+                &Dictionary::get_full_name(&object.to_string(),
+                &self.mod_name).replace("::", "__mod__")),
+            _ => cstr = cstr.replace("__ARG__", &object.to_string())
+        }
+        cstr = cstr.replace("__WORD__", &Dictionary::get_full_name(&token.lexeme,
+                &self.mod_name).replace("::", "__"));
 
         Ok(Compiled::new(cstr.into_bytes()))
     }
@@ -313,21 +319,24 @@ impl StmtVisitor for Compiler {
         let source = fs.read_file(path)?;
 
         // only compile if we do not have the compiled code already!
-        if !self.module_tracker.as_ref().borrow().contains(&source) {
-            self.module_tracker.as_ref().borrow_mut().insert(source.clone());
-
+        if !self.module_tracker.as_ref().borrow().contains_key(&source) {
             let mut compiler = Compiler::new(&source, &path)?;
             compiler.module_tracker = self.module_tracker.clone();
             let mut compiled = compiler.compile()?;
 
             let flattened = Compiled::flatten_bytes(&mut compiled);
 
+            // keep track of compilation result in the tracker for later use
+            self.module_tracker.as_ref().borrow_mut().insert(source.clone(), compiler.dictionary.clone());
             // merge dictionaries
             self.dictionary.as_mut().extend(compiler.dictionary.as_ref());
 
             return Ok(flattened);
+        } else {
+            // if we already did the compilation just add it
+            self.dictionary.as_mut().extend(&self.module_tracker.borrow()[&source]);
+            Ok(Compiled::new(vec![]))
         }
-        Ok(Compiled::new(vec![]))
     }
 
     fn visit_mod(&mut self, stmt: &mut ModStmt) -> BoxResult<Compiled> {
@@ -349,7 +358,7 @@ impl ExprVisitor for Compiler {
     }
 
     fn visit_word(&mut self, expr: &mut WordExpr) -> BoxResult<Object> {
-        self.dictionary.get(&expr.name, &self.mod_name)
+        self.dictionary.get_any(&expr.name, vec![&None, &self.mod_name])
     }
 }
 
@@ -438,16 +447,36 @@ mod tests {
     #[test]
     fn it_should_use_mod_keyword() {
         let mut compiler = Compiler::new("
+            :i no_mod :asm \"nomod\" ;
             :mod Tests
             :i compile :asm \":\" ;
             :i call :asm \":\" ;
             :i return :asm \"\nrts\n\" ;
             : test :asm \"lda #00\" ;
             Tests::test
+            no_mod
             ", "").unwrap();
         let result = compiler.compile().unwrap();
         let output = Compiled::flatten(result).unwrap();
 
-        assert_eq!(output, ":lda #00\nrts\n\n:\n".to_string()) ;
+        assert_eq!(output, ":lda #00\nrts\n\n:\nnomod\n".to_string()) ;
+    }
+
+    #[test]
+    fn it_should_apply_mod_to_arg_and_word() {
+        let mut compiler = Compiler::new("
+            :i compile :asm \"arg: __ARG__ word: __WORD__\n\" ;
+            :i return :asm \"\nrts\n\" ;
+            : no_mod :asm \"nomod\" ;
+            :mod Tests
+            :i call :asm \":\" ;
+            : mod :asm \"mod\" ;
+            ", "").unwrap();
+        let result = compiler.compile().unwrap();
+        let output = Compiled::flatten(result).unwrap();
+
+        assert_eq!(output,
+            "arg: no_mod word: compile\nnomod\nrts\n\narg: Tests__mod__mod word: Tests__compile\nmod\nrts\n\n"
+            .to_string()) ;
     }
 }

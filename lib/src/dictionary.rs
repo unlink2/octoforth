@@ -3,8 +3,9 @@ use super::error::*;
 use std::collections::HashMap;
 use super::token::*;
 
+#[derive(Clone)]
 pub struct Dictionary {
-    words: HashMap<String, Object>,
+    pub words: HashMap<String, Object>,
     pub parent: Option<Box<Dictionary>>
 }
 
@@ -42,6 +43,16 @@ impl Dictionary {
     pub fn define(&mut self, name: &str, prefix: &Option<String>, value: &Object) {
         let full_name = Self::get_full_name(name, prefix);
         self.words.insert(full_name, value.clone());
+    }
+
+    pub fn get_any(&self, name: &Token, valid: Vec<&Option<String>>) -> BoxResult<Object> {
+        for prefix in valid {
+            match self.get(name, prefix) {
+                Ok(obj) => return Ok(obj),
+                _ => {}
+            }
+        }
+        return Err(Box::new(ExecError::new(ErrorType::UndefinedWord, name.clone())))
     }
 
     pub fn get(&self, name: &Token, prefix: &Option<String>) -> BoxResult<Object> {
