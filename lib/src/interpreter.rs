@@ -130,13 +130,11 @@ impl StmtVisitor for Interpreter {
                 // call the word in interpreted mode
                 return Ok(c.call(self, &expr.expr.token())?);
             },
-            Object::Number(n) => {
+            n => {
                 // in interpreter mode numbers simply are pushed
-                self.stack.push(Object::Number(*n));
+                self.stack.push(n.clone());
                 return Ok(Compiled::new(vec![]));
             }
-            // TODO support other types at some point!
-            _ => return Err(Box::new(ExecError::new(ErrorType::UnsupportedObject, expr.expr.token())))
         };
     }
 
@@ -300,7 +298,7 @@ mod tests {
         };
 
         let errors_id: Vec<String> = errors.iter().map(|x| format!("{:?}", x)).collect();
-        assert_eq!(errors_id, vec!["type: UnsupportedObject; lexeme: \"Hi\"".to_string()]);
+        assert_eq!(errors_id, vec!["type: TypeError; lexeme: +".to_string()]);
     }
 
     #[test]

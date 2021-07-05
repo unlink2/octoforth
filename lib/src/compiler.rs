@@ -199,7 +199,15 @@ impl StmtVisitor for Compiler {
                         return self.call_word(token, "push64", &Object::Number(r));
                     }
                 }
-            }
+            },
+            Object::Real(n) => {
+                let token = stmt.token();
+                return self.call_word(token, "pushreal", &Object::Real(*n));
+            },
+            Object::Str(n) => {
+                let token = stmt.token();
+                return self.call_word(token, "pushstr", &Object::Str(n.clone()));
+            },
             // TODO support other types at some point!
             _ => return Err(Box::new(ExecError::new(ErrorType::UnsupportedObject, stmt.expr.token())))
         };
@@ -477,6 +485,32 @@ mod tests {
 
         assert_eq!(output,
             "arg: no_mod word: compile\nnomod\nrts\n\narg: Tests__mod__mod word: Tests__compile\nmod\nrts\n\n"
+            .to_string()) ;
+    }
+
+    #[test]
+    fn it_should_push_real() {
+        let mut compiler = Compiler::new("
+            :i pushreal :asm \"__ARG__\n\" ;
+            3.1415
+            ", "").unwrap();
+        let result = compiler.compile().unwrap();
+        let output = Compiled::flatten(result).unwrap();
+
+        assert_eq!(output,"3.1415\n\n"
+            .to_string()) ;
+    }
+
+    #[test]
+    fn it_should_push_str() {
+        let mut compiler = Compiler::new("
+            :i pushstr :asm \"__ARG__\n\" ;
+            \"Hello World\"
+            ", "").unwrap();
+        let result = compiler.compile().unwrap();
+        let output = Compiled::flatten(result).unwrap();
+
+        assert_eq!(output,"Hello World\n\n"
             .to_string()) ;
     }
 }
