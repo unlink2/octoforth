@@ -4,6 +4,8 @@ use super::error::*;
 use super::expr::*;
 use std::str;
 
+/// a statement instruction the compiler to
+/// perform an action and returns the resulting code
 #[derive(Clone)]
 pub struct Compiled {
     pub data: Vec<u8>
@@ -44,7 +46,8 @@ pub enum Stmt {
     Loop(LoopStmt),
     Use(UseStmt),
     Asm(AsmStmt),
-    Mod(ModStmt)
+    Mod(ModStmt),
+    Tick(TickStmt)
 }
 
 impl StmtNode for Stmt {
@@ -57,7 +60,8 @@ impl StmtNode for Stmt {
             Self::Loop(loopstmt) => loopstmt.accept(visitor),
             Self::Use(usestmt) => usestmt.accept(visitor),
             Self::Mod(modstmt) => modstmt.accept(visitor),
-            Self::Asm(asmstmt) => asmstmt.accept(visitor)
+            Self::Asm(asmstmt) => asmstmt.accept(visitor),
+            Self::Tick(tickstmt) => tickstmt.accept(visitor)
         }
     }
 }
@@ -79,6 +83,7 @@ pub trait StmtVisitor {
     fn visit_use(&mut self, stmt: &mut UseStmt) -> BoxResult<Compiled>;
     fn visit_mod(&mut self, stmt: &mut ModStmt) -> BoxResult<Compiled>;
     fn visit_asm(&mut self, stmt: &mut AsmStmt) -> BoxResult<Compiled>;
+    fn visit_tick(&mut self, stmt: &mut TickStmt) -> BoxResult<Compiled>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -287,5 +292,30 @@ impl StmtNode for ModStmt {
 
     fn token(&self) -> Token {
         self.name.clone()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TickStmt {
+    pub token: Token,
+    pub word: Expr
+}
+
+impl TickStmt {
+    pub fn new(word: Expr, token: Token) -> Self {
+        Self {
+            word,
+            token
+        }
+    }
+}
+
+impl StmtNode for TickStmt {
+    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<Compiled> {
+        return visitor.visit_tick(self);
+    }
+
+    fn token(&self) -> Token {
+        self.token.clone()
     }
 }

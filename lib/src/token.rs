@@ -27,6 +27,7 @@ pub enum TokenType {
     Asm, // :asm "<asm code>"
     Use, // :use "file"
     Mod, // :mod module_name
+    Tick, // used to find definition of word
 
     EndOfFile,
 }

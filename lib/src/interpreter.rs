@@ -201,6 +201,11 @@ impl StmtVisitor for Interpreter {
     fn visit_asm(&mut self, _stmt: &mut AsmStmt) -> BoxResult<Compiled> {
         Ok(Compiled::new(vec![]))
     }
+
+    fn visit_tick(&mut self, _stmt: &mut TickStmt) -> BoxResult<Compiled> {
+        // TODO interpreter needs to support tick
+        Ok(Compiled::new(vec![]))
+    }
 }
 
 impl ExprVisitor for Interpreter {
