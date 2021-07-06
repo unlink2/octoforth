@@ -29,6 +29,7 @@ impl Scanner {
         keywords.insert(":asm".to_string(), TokenType::Asm);
         keywords.insert(":use".to_string(), TokenType::Use);
         keywords.insert(":mod".to_string(), TokenType::Mod);
+        keywords.insert("'".to_string(), TokenType::Tick);
 
         Self {
             source: source.into(),
@@ -149,6 +150,16 @@ impl Scanner {
         return Ok(Some(token));
     }
 
+    fn scan_tick(&mut self) -> BoxResult<Token> {
+        return Ok(Token::new(
+                TokenType::Tick,
+                Object::Nil,
+                &self.source[self.start..self.current].to_string(),
+                self.line,
+                self.start,
+                &self.path));
+    }
+
     fn scan_char(&mut self, quote: char) -> BoxResult<Token> {
         let character = self.advance();
 
@@ -162,27 +173,30 @@ impl Scanner {
             character
         };
 
-        let end = self.advance();
-        if end != quote {
-            return Err(Box::new(
-                    ExecError::new(
-                        ErrorType::UnterminatedString,
-                        Token::new(
-                            TokenType::Invalid,
-                            Object::Nil,
-                            "",
-                            self.line,
-                            self.start,
-                            &self.path))));
+        if c == ' ' && self.peek() != '\'' {
+            return self.scan_tick();
+        } else {
+            let end = self.advance();
+            if end != quote {
+                return Err(Box::new(
+                        ExecError::new(
+                            ErrorType::UnterminatedString,
+                            Token::new(
+                                TokenType::Invalid,
+                                Object::Nil,
+                                "",
+                                self.line,
+                                self.start,
+                                &self.path))));
+            }
+            return Ok(Token::new(
+                    TokenType::Number,
+                    Object::Number(c as ObjNumber),
+                    &self.source[self.start..self.current].to_string(),
+                    self.line,
+                    self.start,
+                    &self.path));
         }
-
-        return Ok(Token::new(
-                TokenType::Number,
-                Object::Number(c as ObjNumber),
-                &self.source[self.start..self.current].to_string(),
-                self.line,
-                self.start,
-                &self.path));
     }
 
     fn scan_str(&mut self, quote: char) -> BoxResult<Token> {
@@ -712,6 +726,28 @@ mod tests {
                         "",
                         1,
                         3,
+                        "")]);
+    }
+
+    #[test]
+    fn it_should_scan_tick() {
+        let mut scanner = Scanner::new("' ", "");
+
+        let tokens = scanner.scan().unwrap();
+
+        assert_eq!(tokens, vec![Token::new(
+                    TokenType::Tick,
+                    Object::Nil,
+                    "' ",
+                    1,
+                    0,
+                    ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        2,
                         "")]);
     }
 

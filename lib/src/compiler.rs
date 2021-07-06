@@ -358,6 +358,16 @@ impl StmtVisitor for Compiler {
             _ => Err(Box::new(ExecError::new(ErrorType::TypeError, stmt.token())))
         }
     }
+
+    fn visit_tick(&mut self, stmt: &mut TickStmt) -> BoxResult<Compiled> {
+        // tick pushes a word to the stack
+        let word = self.evaluate(&mut stmt.word)?;
+        match &word {
+            Object::Callable(_) => self.call_word(stmt.token(), "__tick",
+                &Object::Word(stmt.word.token().lexeme.clone())),
+            _ => return Err(Box::new(ExecError::new(ErrorType::TypeError, stmt.token())))
+        }
+    }
 }
 
 impl ExprVisitor for Compiler {
@@ -511,6 +521,22 @@ mod tests {
         let output = Compiled::flatten(result).unwrap();
 
         assert_eq!(output,"Hello World\n\n"
+            .to_string()) ;
+    }
+
+    #[test]
+    fn it_should_push_word_addr_with_tick() {
+        let mut compiler = Compiler::new("
+            :i compile :asm \"__ARG__ \" ;
+            :i return :asm \"rts \" ;
+            :i __tick :asm \"lda __ARG__ \" ;
+            : myword :asm \"lda #100 \" ;
+            ' myword
+            ", "").unwrap();
+        let result = compiler.compile().unwrap();
+        let output = Compiled::flatten(result).unwrap();
+
+        assert_eq!(output,"myword lda #100 rts \nlda myword \n"
             .to_string()) ;
     }
 }

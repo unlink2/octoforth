@@ -65,6 +65,8 @@ impl Parser {
             return self.mod_stmt();
         } else if self.is_match(vec![TokenType::Use]) {
             return self.use_stmt();
+        } else if self.is_match(vec![TokenType::Tick]) {
+            return self.tick_stmt();
         } else {
             // default case
             let expr = match self.expr() {
@@ -157,6 +159,12 @@ impl Parser {
     fn loop_stmt(&mut self) -> BoxResult<Stmt> {
         let loop_body = Box::new(self.block_stmt(TokenType::Until)?);
         return Ok(Stmt::Loop(LoopStmt::new(loop_body, self.previous().clone())));
+    }
+
+    fn tick_stmt(&mut self) -> BoxResult<Stmt> {
+        let token = self.previous().clone();
+        let word = self.expr()?;
+        return Ok(Stmt::Tick(TickStmt::new(word, token)));
     }
 
     fn expr(&mut self) -> BoxResult<Expr> {

@@ -2,6 +2,8 @@ use super::object::*;
 use super::token::*;
 use super::error::*;
 
+/// An expression is an action that returns
+/// an internal compilation object
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Literal(LiteralExpr),
