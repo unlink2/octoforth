@@ -29,6 +29,12 @@ impl Scanner {
         keywords.insert(":asm".to_string(), TokenType::Asm);
         keywords.insert(":use".to_string(), TokenType::Use);
         keywords.insert(":mod".to_string(), TokenType::Mod);
+
+        keywords.insert(":i8".to_string(), TokenType::I8);
+        keywords.insert(":i16".to_string(), TokenType::I16);
+        keywords.insert(":i32".to_string(), TokenType::I32);
+        keywords.insert(":i64".to_string(), TokenType::I64);
+
         keywords.insert("'".to_string(), TokenType::Tick);
 
         Self {

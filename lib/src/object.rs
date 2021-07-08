@@ -1,4 +1,6 @@
 use super::callable::Callable;
+use super::error::*;
+use super::token::Token;
 
 pub type ObjStr = String;
 pub type ObjNumber = i64;
@@ -12,7 +14,7 @@ pub enum Object {
     Real(ObjReal),
     Str(ObjStr),
     Word(ObjStr),
-    Callable(Box<dyn Callable>)
+    Callable(Box<dyn Callable>),
 }
 
 impl Object {
@@ -35,6 +37,13 @@ impl Object {
             Object::Real(i) => format!("{}", i),
             Object::Str(s) => s.clone(),
             Object::Word(w) => w.clone(),
+        }
+    }
+
+    pub fn mask(&self, mask: ObjNumber, token: &Token) -> BoxResult<Object> {
+        match self {
+            Object::Number(n) => Ok(Object::Number(n & mask)),
+            _ => Err(Box::new(ExecError::new(ErrorType::TypeError, token.clone())))
         }
     }
 }

@@ -139,7 +139,7 @@ impl StmtVisitor for Interpreter {
     }
 
     fn visit_block(&mut self, block: &mut BlockStmt) -> BoxResult<Compiled> {
-        // replace with new env 
+        // replace with new env
         let scope = Box::new(Dictionary::new());
         let prev = std::mem::replace(&mut self.dictionary, scope);
         self.dictionary.parent = Some(prev);
@@ -147,7 +147,7 @@ impl StmtVisitor for Interpreter {
         for stmt in &mut block.body {
             self.execute(stmt)?;
         }
-        
+
         // move env back
         let no_parent = None;
         let parent = std::mem::replace(&mut self.dictionary.parent, no_parent);
@@ -215,6 +215,29 @@ impl ExprVisitor for Interpreter {
 
     fn visit_word(&mut self, expr: &mut WordExpr) -> BoxResult<Object> {
         self.dictionary.get(&expr.name, &self.mod_name)
+    }
+
+    fn visit_unary(&mut self, expr: &mut UnaryExpr) -> BoxResult<Object> {
+        let obj = self.evaluate(&mut expr.right)?;
+        match expr.op.token_type {
+            TokenType::I8 => {
+                Ok(obj.mask(u8::MAX as ObjNumber, &expr.token())?)
+            },
+            TokenType::I16 => {
+                Ok(obj.mask(u16::MAX as ObjNumber, &expr.token())?)
+            },
+            TokenType::I32 => {
+                Ok(obj.mask(u32::MAX as ObjNumber, &expr.token())?)
+            },
+            TokenType::I64 => {
+                Ok(obj.mask(u64::MAX as ObjNumber, &expr.token())?)
+            },
+            _ => {
+                // should not happen if parser works!
+                return Err(Box::new(
+                        ExecError::new(ErrorType::UnexpectedToken, expr.op.clone())));
+            }
+        }
     }
 }
 

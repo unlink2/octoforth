@@ -378,6 +378,29 @@ impl ExprVisitor for Compiler {
     fn visit_word(&mut self, expr: &mut WordExpr) -> BoxResult<Object> {
         self.dictionary.get_any(&expr.name, vec![&None, &self.mod_name])
     }
+
+    fn visit_unary(&mut self, expr: &mut UnaryExpr) -> BoxResult<Object> {
+        let obj = self.evaluate(&mut expr.right)?;
+        match expr.op.token_type {
+            TokenType::I8 => {
+                Ok(obj.mask(u8::MAX as ObjNumber, &expr.token())?)
+            },
+            TokenType::I16 => {
+                Ok(obj.mask(u16::MAX as ObjNumber, &expr.token())?)
+            },
+            TokenType::I32 => {
+                Ok(obj.mask(u32::MAX as ObjNumber, &expr.token())?)
+            },
+            TokenType::I64 => {
+                Ok(obj.mask(u64::MAX as ObjNumber, &expr.token())?)
+            },
+            _ => {
+                // should not happen if parser works!
+                return Err(Box::new(
+                        ExecError::new(ErrorType::UnexpectedToken, expr.op.clone())));
+            }
+        }
+    }
 }
 
 #[cfg(test)]
