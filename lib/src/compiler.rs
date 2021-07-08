@@ -545,13 +545,15 @@ mod tests {
             :i return :asm \"rts \" ;
             :i push_default :asm \"lda __ARG__ \" ;
             :i push_i16 :asm \"lda __ARG__i16 \" ;
+            :c constant 512 ;
             :i16 257
+            :i16 constant
             255
             ", "").unwrap();
         let result = compiler.compile().unwrap();
         let output = Compiled::flatten(result).unwrap();
 
-        assert_eq!(output, "lda 257i16 \nlda 255 \n"
+        assert_eq!(output, "lda 257i16 \nlda 512i16 \nlda 255 \n"
             .to_string()) ;
     }
 }
