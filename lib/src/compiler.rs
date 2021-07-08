@@ -4,7 +4,6 @@ use super::error::*;
 use super::expr::*;
 use super::object::*;
 use super::dictionary::*;
-use super::builtins::*;
 use super::token::*;
 use super::callable::*;
 use super::interpreter::*;
@@ -15,20 +14,12 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-pub enum StackMode {
-    Int8,
-    Int16,
-    Int32,
-    Int64
-}
-
 pub struct Compiler {
     stmts: Vec<Stmt>,
     // contains words and compile-time words
     pub dictionary: Box<Dictionary>,
 
     mod_name: Option<String>,
-    pub stack_mode: StackMode,
     pub filesystem: Box<dyn FileSystemManager>,
 
     // tracks which modules have already been compiled
@@ -42,12 +33,7 @@ pub struct Compiler {
 
 impl Compiler {
     pub fn builtins() -> Box<Dictionary> {
-        let mut builtins = Box::new(Dictionary::new());
-
-        builtins.define(":i8", &None, &Object::Callable(Box::new(Int8)));
-        builtins.define(":i16", &None, &Object::Callable(Box::new(Int16)));
-        builtins.define(":i32", &None, &Object::Callable(Box::new(Int32)));
-        builtins.define(":i64", &None, &Object::Callable(Box::new(Int64)));
+        let builtins = Box::new(Dictionary::new());
 
         builtins
     }
@@ -69,7 +55,6 @@ impl Compiler {
             stmts,
             dictionary: Self::builtins(),
             mod_name: None,
-            stack_mode: StackMode::Int8,
             filesystem: Box::new(LocalFileSystem),
             module_tracker: Rc::new(RefCell::new(HashMap::new())),
             parent_dir: Path::new(path).parent().unwrap_or(Path::new(path)).to_path_buf(),
@@ -180,33 +165,19 @@ impl StmtVisitor for Compiler {
                 // in compiled mode we call the push8,16,32,64 words
                 // depending on the compiler mode
                 let token = stmt.token();
-                let r;
-                match self.stack_mode {
-                    StackMode::Int8 => {
-                        r = *n & 0xFF;
-                        return self.call_word(token, "push8", &Object::Number(r));
-                    },
-                    StackMode::Int16 => {
-                        r = *n & 0xFFFF;
-                        return self.call_word(token, "push16", &Object::Number(r));
-                    },
-                    StackMode::Int32 => {
-                        r = *n & 0xFFFFFFFF;
-                        return self.call_word(token, "push32", &Object::Number(r));
-                    },
-                    StackMode::Int64 => {
-                        r = *n & 0xFFFFFFFFFFFFFFF;
-                        return self.call_word(token, "push64", &Object::Number(r));
-                    }
-                }
+                return self.call_word(token, "push_default", &Object::Number(*n));
             },
             Object::Real(n) => {
                 let token = stmt.token();
-                return self.call_word(token, "pushreal", &Object::Real(*n));
+                return self.call_word(token, "push_real", &Object::Real(*n));
             },
             Object::Str(n) => {
                 let token = stmt.token();
-                return self.call_word(token, "pushstr", &Object::Str(n.clone()));
+                return self.call_word(token, "push_str", &Object::Str(n.clone()));
+            },
+            Object::TypedWord(tw) => {
+                let token = stmt.token();
+                return self.call_word(token, &tw.word, &tw.value);
             },
             // TODO support other types at some point!
             _ => return Err(Box::new(ExecError::new(ErrorType::UnsupportedObject, stmt.expr.token())))
@@ -378,6 +349,33 @@ impl ExprVisitor for Compiler {
     fn visit_word(&mut self, expr: &mut WordExpr) -> BoxResult<Object> {
         self.dictionary.get_any(&expr.name, vec![&None, &self.mod_name])
     }
+
+    fn visit_unary(&mut self, expr: &mut UnaryExpr) -> BoxResult<Object> {
+        let obj = self.evaluate(&mut expr.right)?;
+        match expr.op.token_type {
+            TokenType::I8 => {
+                Ok(Object::TypedWord(TypedWord::new(
+                            obj.mask(i8::MAX as ObjNumber, &expr.token())?, "push_i8")))
+            },
+            TokenType::I16 => {
+                Ok(Object::TypedWord(TypedWord::new(
+                            obj.mask(i16::MAX as ObjNumber, &expr.token())?, "push_i16")))
+            },
+            TokenType::I32 => {
+                Ok(Object::TypedWord(TypedWord::new(
+                            obj.mask(i32::MAX as ObjNumber, &expr.token())?, "push_i32")))
+            },
+            TokenType::I64 => {
+                Ok(Object::TypedWord(TypedWord::new(
+                            obj.mask(i64::MAX as ObjNumber, &expr.token())?, "push_i64")))
+            },
+            _ => {
+                // should not happen if parser works!
+                return Err(Box::new(
+                        ExecError::new(ErrorType::UnexpectedToken, expr.op.clone())));
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -411,7 +409,7 @@ mod tests {
         let mut compiler = Compiler::new("
             :i __if :asm \"pla bne :+ \" ;
             :i __then :asm \" : \" ;
-            :i push8 :asm \"lda #__ARG__ pha \" ;
+            :i push_default :asm \"lda #__ARG__ pha \" ;
             1 if 2 then
             ", "").unwrap();
         let result = compiler.compile().unwrap();
@@ -426,7 +424,7 @@ mod tests {
             :i __ifelse :asm \"pla bne :+ \" ;
             :i __else :asm \" jmp :++ : \" ;
             :i __then :asm \" : \" ;
-            :i push8 :asm \"lda #__ARG__ pha \" ;
+            :i push_default :asm \"lda #__ARG__ pha \" ;
             1 if 2 else 3 then
             ", "").unwrap();
         let result = compiler.compile().unwrap();
@@ -440,7 +438,7 @@ mod tests {
         let mut compiler = Compiler::new("
             :i __loop :asm \" : \" ;
             :i __until :asm \"pla ben :- \" ;
-            :i push8 :asm \" lda #__ARG__ pha \" ;
+            :i push_default :asm \" lda #__ARG__ pha \" ;
             loop 1 until
             ", "").unwrap();
         let result = compiler.compile().unwrap();
@@ -453,7 +451,7 @@ mod tests {
     fn it_should_use_consts() {
         let mut compiler = Compiler::new("
             :c test 2 2 + ;
-            :i push8 :asm \"lda #__ARG__ pha\" ;
+            :i push_default :asm \"lda #__ARG__ pha\" ;
             test
             ", "").unwrap();
         let result = compiler.compile().unwrap();
@@ -501,7 +499,7 @@ mod tests {
     #[test]
     fn it_should_push_real() {
         let mut compiler = Compiler::new("
-            :i pushreal :asm \"__ARG__\n\" ;
+            :i push_real :asm \"__ARG__\n\" ;
             3.1415
             ", "").unwrap();
         let result = compiler.compile().unwrap();
@@ -514,7 +512,7 @@ mod tests {
     #[test]
     fn it_should_push_str() {
         let mut compiler = Compiler::new("
-            :i pushstr :asm \"__ARG__\n\" ;
+            :i push_str :asm \"__ARG__\n\" ;
             \"Hello World\"
             ", "").unwrap();
         let result = compiler.compile().unwrap();
@@ -537,6 +535,25 @@ mod tests {
         let output = Compiled::flatten(result).unwrap();
 
         assert_eq!(output,"myword lda #100 rts \nlda myword \n"
+            .to_string()) ;
+    }
+
+    #[test]
+    fn it_should_use_typed_word_with_annotation() {
+        let mut compiler = Compiler::new("
+            :i compile :asm \"__ARG__ \" ;
+            :i return :asm \"rts \" ;
+            :i push_default :asm \"lda __ARG__ \" ;
+            :i push_i16 :asm \"lda __ARG__i16 \" ;
+            :c constant 512 ;
+            :i16 257
+            :i16 constant
+            255
+            ", "").unwrap();
+        let result = compiler.compile().unwrap();
+        let output = Compiled::flatten(result).unwrap();
+
+        assert_eq!(output, "lda 257i16 \nlda 512i16 \nlda 255 \n"
             .to_string()) ;
     }
 }

@@ -24,6 +24,12 @@ pub enum TokenType {
 
     StartInlineDefine,
 
+    // stack push datatype hint
+    I8,
+    I16,
+    I32,
+    I64,
+
     Asm, // :asm "<asm code>"
     Use, // :use "file"
     Mod, // :mod module_name
@@ -57,6 +63,18 @@ impl Token {
             lexeme: lexeme.into(),
             start,
             line
+        }
+    }
+
+    /// returns a word attached to this token
+    /// usually only used for keywords
+    pub fn word(&self) -> &str {
+        match self.token_type {
+            TokenType::I8 => "push8",
+            TokenType::I16 => "push16",
+            TokenType::I32 => "push32",
+            TokenType::I64 => "push64",
+            _ => ""
         }
     }
 }

@@ -168,6 +168,25 @@ impl Parser {
     }
 
     fn expr(&mut self) -> BoxResult<Expr> {
+        self.unary_expr()
+    }
+
+    fn unary_expr(&mut self) -> BoxResult<Expr> {
+        if self.is_match(vec![TokenType::I8,
+            TokenType::I16,
+            TokenType::I32,
+            TokenType::I64]) {
+            // next should be another expr
+            let op = self.previous().clone();
+            let right = self.expr()?;
+
+            Ok(Expr::Unary(UnaryExpr::new(op, Box::new(right))))
+        } else {
+            self.primary_expr()
+        }
+    }
+
+    fn primary_expr(&mut self) -> BoxResult<Expr> {
         if self.is_match(vec![TokenType::Word]) {
             Ok(Expr::Word(WordExpr::new(self.previous().clone())))
         } else if self.is_match(vec![
@@ -242,8 +261,6 @@ mod tests {
         let mut parser = Parser::new(": word 1 + ;", "").unwrap();
         let stmts = parser.parse().unwrap();
 
-
-
         assert_eq!(stmts, vec![
             Stmt::Define(DefineStmt::new(
                     Token::new(
@@ -284,6 +301,37 @@ mod tests {
 
         ]);
     }
+
+    #[test]
+    pub fn it_should_scan_unary() {
+        let mut parser = Parser::new(":i16 257", "").unwrap();
+        let stmts = parser.parse().unwrap();
+
+        assert_eq!(stmts, vec![
+            Stmt::Expr(ExprStmt::new(Expr::Unary(
+                    UnaryExpr::new(
+                        Token::new(
+                            TokenType::I16,
+                            Object::Word(":i16".into()),
+                            ":i16",
+                            1,
+                            0,
+                            ""),
+                        Box::new(Expr::Literal(LiteralExpr::new(
+                                    Token::new(
+                                        TokenType::Number,
+                                        Object::Number(257),
+                                        "257",
+                                        1,
+                                        5,
+                                        "")
+                        ))
+                    )))),
+                )
+        ]);
+    }
+
+
 
     #[test]
     pub fn it_should_fail_when_name_is_missing() {

@@ -1,9 +1,28 @@
 use super::callable::Callable;
+use super::error::*;
+use super::token::Token;
 
 pub type ObjStr = String;
 pub type ObjNumber = i64;
 pub type ObjReal = f64;
 pub type ObjList = Vec<Object>;
+
+/// expressions that call a word evaluate to this
+/// and call the word with value as __ARG__
+#[derive(Debug, Clone)]
+pub struct TypedWord {
+    pub value: Box<Object>,
+    pub word: ObjStr
+}
+
+impl TypedWord {
+    pub fn new(value: Object, word: &str) -> Self {
+        Self {
+            value: Box::new(value),
+            word: word.into()
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -12,7 +31,8 @@ pub enum Object {
     Real(ObjReal),
     Str(ObjStr),
     Word(ObjStr),
-    Callable(Box<dyn Callable>)
+    TypedWord(TypedWord),
+    Callable(Box<dyn Callable>),
 }
 
 impl Object {
@@ -24,6 +44,7 @@ impl Object {
             Object::Real(i) => *i != 0.0,
             Object::Str(_) => true,
             Object::Word(_) => true,
+            Object::TypedWord(_) => true,
         }
     }
 
@@ -35,6 +56,14 @@ impl Object {
             Object::Real(i) => format!("{}", i),
             Object::Str(s) => s.clone(),
             Object::Word(w) => w.clone(),
+            Object::TypedWord(w) => w.word.clone()
+        }
+    }
+
+    pub fn mask(&self, mask: ObjNumber, token: &Token) -> BoxResult<Object> {
+        match self {
+            Object::Number(n) => Ok(Object::Number(n & mask)),
+            _ => Err(Box::new(ExecError::new(ErrorType::TypeError, token.clone())))
         }
     }
 }
