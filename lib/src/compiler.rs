@@ -13,6 +13,7 @@ use super::filesystem::*;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use super::optimizer::Optimizer;
 
 pub struct Compiler {
     stmts: Vec<Stmt>,
@@ -28,7 +29,8 @@ pub struct Compiler {
 
     parent_dir: PathBuf,
 
-    halt: bool
+    halt: bool,
+    olevel: usize
 }
 
 impl Compiler {
@@ -58,11 +60,16 @@ impl Compiler {
             filesystem: Box::new(LocalFileSystem),
             module_tracker: Rc::new(RefCell::new(HashMap::new())),
             parent_dir: Path::new(path).parent().unwrap_or(Path::new(path)).to_path_buf(),
-            halt: false
+            halt: false,
+            olevel: 1
         })
     }
 
     pub fn compile(&mut self) -> Result<Vec<Compiled>, ErrorList> {
+        for _ in [0..self.olevel] {
+            Optimizer::optimize(&mut self.stmts);
+        }
+
         let mut output = vec![];
         let mut errors = vec![];
 
