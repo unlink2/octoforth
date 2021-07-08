@@ -2,7 +2,6 @@ use super::stmt::*;
 use super::error::*;
 use super::object::*;
 use super::callable::*;
-use super::compiler::*;
 use super::interpreter::*;
 use super::token::*;
 
@@ -232,62 +231,3 @@ impl Callable for NotEqual {
     }
 }
 
-/**
- * Compiled builtins
- */
-
-#[derive(Clone)]
-pub struct Int8;
-
-impl Callable for Int8 {
-    fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
-        compiler.stack_mode = StackMode::Int8;
-        Ok(Compiled::new(vec![]))
-    }
-
-    fn mode(&self) -> DefineMode {
-        DefineMode::Inline
-    }
-}
-
-#[derive(Clone)]
-pub struct Int16;
-
-impl Callable for Int16 {
-    fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
-        compiler.stack_mode = StackMode::Int16;
-        Ok(Compiled::new(vec![]))
-    }
-
-    fn mode(&self) -> DefineMode {
-        DefineMode::Inline
-    }
-}
-
-#[derive(Clone)]
-pub struct Int32;
-
-impl Callable for Int32 {
-    fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
-        compiler.stack_mode = StackMode::Int32;
-        Ok(Compiled::new(vec![]))
-    }
-
-    fn mode(&self) -> DefineMode {
-        DefineMode::Inline
-    }
-}
-
-#[derive(Clone)]
-pub struct Int64;
-
-impl Callable for Int64 {
-    fn compile(&mut self, compiler: &mut Compiler, _token: &Token) -> BoxResult<Compiled> {
-        compiler.stack_mode = StackMode::Int64;
-        Ok(Compiled::new(vec![]))
-    }
-
-    fn mode(&self) -> DefineMode {
-        DefineMode::Inline
-    }
-}
