@@ -31,7 +31,8 @@ pub enum TokenType {
     I64,
 
     Asm, // :asm "<asm code>"
-    Use, // :use "file"
+    Use, // :use <namespace> */<word>...
+    Import, // :import "file"
     Mod, // :mod module_name
     Tick, // used to find definition of word
 

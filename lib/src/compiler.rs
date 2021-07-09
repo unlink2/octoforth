@@ -291,7 +291,7 @@ impl StmtVisitor for Compiler {
         return Ok(compiled);
     }
 
-    fn visit_use(&mut self, stmt: &mut UseStmt) -> BoxResult<Compiled> {
+    fn visit_impoprt(&mut self, stmt: &mut ImportStmt) -> BoxResult<Compiled> {
         // compile a module, get all the code and
         // return the compilation output
         // merge dictionaries
@@ -324,6 +324,11 @@ impl StmtVisitor for Compiler {
             self.dictionary.as_mut().extend(&self.module_tracker.borrow()[&source]);
             Ok(Compiled::new(vec![]))
         }
+    }
+
+    fn visit_use(&mut self, stmt: &mut UseStmt) -> BoxResult<Compiled> {
+        // TODO implement!
+        Ok(Compiled::new(vec![]))
     }
 
     fn visit_mod(&mut self, stmt: &mut ModStmt) -> BoxResult<Compiled> {

@@ -63,8 +63,8 @@ impl Parser {
             return self.asm_stmt();
         } else if self.is_match(vec![TokenType::Mod]) {
             return self.mod_stmt();
-        } else if self.is_match(vec![TokenType::Use]) {
-            return self.use_stmt();
+        } else if self.is_match(vec![TokenType::Import]) {
+            return self.import_stmt();
         } else if self.is_match(vec![TokenType::Tick]) {
             return self.tick_stmt();
         } else {
@@ -126,9 +126,9 @@ impl Parser {
         return Ok(Stmt::Mod(ModStmt::new(mod_name)));
     }
 
-    fn use_stmt(&mut self) -> BoxResult<Stmt> {
+    fn import_stmt(&mut self) -> BoxResult<Stmt> {
         let mod_name = self.consume(TokenType::Str, ErrorType::UnexpectedToken)?;
-        return Ok(Stmt::Use(UseStmt::new(mod_name.literal.clone(), mod_name)));
+        return Ok(Stmt::Use(ImportStmt::new(mod_name.literal.clone(), mod_name)));
     }
 
     fn asm_stmt(&mut self) -> BoxResult<Stmt> {

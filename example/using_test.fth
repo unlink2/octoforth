@@ -1,4 +1,4 @@
-:use "./stdlib_tests.fth"
+:import "./stdlib_tests.fth"
 
 start
 initfth
