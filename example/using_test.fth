@@ -3,7 +3,7 @@
 start
 initfth
 
-1 1 +
+(12) 1 +
 
 run
    1 +f
