@@ -124,7 +124,7 @@ impl Compiler {
     /// know how to assemble it.
     fn call_word(&mut self, mut token: Token, name: &str, object: &Object) -> BoxResult<Compiled> {
         token.lexeme = name.into();
-        let mut call_obj = self.dictionary.get_any(&token, vec![&None, &self.mod_name])?;
+        let mut call_obj = self.dictionary.get_any(&token, self.build_imports(&token.lexeme))?;
         let compiled = match &mut call_obj {
             Object::Callable(c) => {
                 c.compile(self, &token)?
@@ -135,16 +135,23 @@ impl Compiler {
         // apply constants
         let mut cstr = str::from_utf8(&compiled.data)?.to_string();
         match object {
-            Object::Callable(_) | Object::Word(_) => cstr = cstr.replace("__ARG__",
+            Object::Callable(_) | Object::Word(_) => {
+                cstr = cstr.replace("__ARG__",
                 &Dictionary::get_full_name(&object.to_string(),
-                &self.mod_name).replace("::", "__mod__")),
+                &None).replace("::", "__mod__"))
+            },
             _ => cstr = cstr.replace("__ARG__", &object.to_string())
         }
         cstr = cstr.replace("__WORD__", &Dictionary::get_full_name(&token.lexeme,
-                &self.mod_name).replace("::", "__"));
+                &None).replace("::", "__"));
         cstr = cstr.replace("__LINE__", &token.line.to_string());
 
         Ok(Compiled::new(cstr.into_bytes()))
+    }
+
+    /// creates an imported module list based on the requested token
+    fn build_imports(&self, _name: &str) -> Vec<&Option<String>> {
+        vec![&None, &self.mod_name]
     }
 }
 
@@ -161,6 +168,7 @@ impl StmtVisitor for Compiler {
                     },
                     DefineMode::Regular => {
                         // arg should be the called word
+                        // TODO we need the fully qualified name here
                         return self.call_word(stmt.token(), "call", &Object::Word(stmt.token().lexeme.clone()));
                     },
                     DefineMode::Constant => {
@@ -327,7 +335,14 @@ impl StmtVisitor for Compiler {
     }
 
     fn visit_use(&mut self, stmt: &mut UseStmt) -> BoxResult<Compiled> {
-        // TODO implement!
+        let search_module = &Some(stmt.module.lexeme.clone());
+
+        // re-define all words as non-prefixed versions
+        for word in &stmt.words[..] {
+            let definition = self.dictionary.get(word, search_module)?;
+            self.dictionary.define(&word.lexeme, &None, &definition);
+        }
+
         Ok(Compiled::new(vec![]))
     }
 
@@ -360,7 +375,7 @@ impl ExprVisitor for Compiler {
     }
 
     fn visit_word(&mut self, expr: &mut WordExpr) -> BoxResult<Object> {
-        self.dictionary.get_any(&expr.name, vec![&None, &self.mod_name])
+        self.dictionary.get_any(&expr.name, self.build_imports(&expr.name.lexeme))
     }
 
     fn visit_unary(&mut self, expr: &mut UnaryExpr) -> BoxResult<Object> {
@@ -567,6 +582,36 @@ mod tests {
         let output = Compiled::flatten(result).unwrap();
 
         assert_eq!(output, "lda 257i16 \nlda 512i16 \nlda 255 \n"
+            .to_string()) ;
+    }
+
+    #[test]
+    fn it_should_use_module_qualifiest_when_using() {
+        let mut compiler = Compiler::new("
+            :i compile :asm \"__ARG__ \" ;
+            :i call :asm \" jsr __ARG__ \" ;
+            :i return :asm \"rts \" ;
+            :i push_default :asm \"lda __ARG__ \" ;
+            :i push_i16 :asm \"lda __ARG__i16 \" ;
+
+            :mod Test
+            : a 1 ;
+            : b 2 ;
+            : c 3 ;
+
+            :mod Other
+            :use Test a c ;
+            Test::a
+            Test::b
+            Test::c
+
+            a
+            c
+            ", "").unwrap();
+        let result = compiler.compile().unwrap();
+        let output = Compiled::flatten(result).unwrap();
+
+        assert_eq!(output, ""
             .to_string()) ;
     }
 }

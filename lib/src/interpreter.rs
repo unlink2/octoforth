@@ -192,7 +192,7 @@ impl StmtVisitor for Interpreter {
         Ok(Compiled::new(vec![]))
     }
 
-    fn visit_use(&mut self, stmt: &mut UseStmt) -> BoxResult<Compiled> {
+    fn visit_use(&mut self, _stmt: &mut UseStmt) -> BoxResult<Compiled> {
         Ok(Compiled::new(vec![]))
     }
 

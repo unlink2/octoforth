@@ -65,6 +65,8 @@ impl Parser {
             return self.mod_stmt();
         } else if self.is_match(vec![TokenType::Import]) {
             return self.import_stmt();
+        } else if self.is_match(vec![TokenType::Use]) {
+            return self.use_stmt();
         } else if self.is_match(vec![TokenType::Tick]) {
             return self.tick_stmt();
         } else {
@@ -128,7 +130,23 @@ impl Parser {
 
     fn import_stmt(&mut self) -> BoxResult<Stmt> {
         let mod_name = self.consume(TokenType::Str, ErrorType::UnexpectedToken)?;
-        return Ok(Stmt::Use(ImportStmt::new(mod_name.literal.clone(), mod_name)));
+        return Ok(Stmt::Import(ImportStmt::new(mod_name.literal.clone(), mod_name)));
+    }
+
+    fn use_stmt(&mut self) -> BoxResult<Stmt> {
+        let mod_name = self.consume(TokenType::Word, ErrorType::UnexpectedToken)?;
+
+        // scan all words after mod_name
+        let mut words = vec![];
+
+        while self.check(TokenType::Word)
+            && !self.is_at_end() {
+            words.push(self.advance().clone());
+        }
+        // use needs  to be terminated
+        self.consume(TokenType::EndDefine, ErrorType::UnterminatedBlock)?;
+
+        return Ok(Stmt::Use(UseStmt::new(mod_name, words)));
     }
 
     fn asm_stmt(&mut self) -> BoxResult<Stmt> {
@@ -331,7 +349,35 @@ mod tests {
         ]);
     }
 
+    #[test]
+    pub fn it_should_parse_use() {
+        let mut parser = Parser::new(":use module w1 w2 ;", "").unwrap();
+        let stmts = parser.parse().unwrap();
 
+        assert_eq!(stmts, vec![
+            Stmt::Use(UseStmt::new(
+                Token::new(TokenType::Word,
+                    Object::Word("module".into()),
+                    "module",
+                    1,
+                    5,
+                    ""),
+                vec![
+                Token::new(TokenType::Word,
+                    Object::Word("w1".into()),
+                    "w1",
+                    1,
+                    12,
+                    ""),
+                Token::new(TokenType::Word,
+                    Object::Word("w2".into()),
+                    "w2",
+                    1,
+                    15,
+                    "")]
+                ))
+        ]);
+    }
 
     #[test]
     pub fn it_should_fail_when_name_is_missing() {

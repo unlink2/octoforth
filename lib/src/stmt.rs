@@ -44,7 +44,8 @@ pub enum Stmt {
     Define(DefineStmt),
     If(IfStmt),
     Loop(LoopStmt),
-    Use(ImportStmt),
+    Import(ImportStmt),
+    Use(UseStmt),
     Asm(AsmStmt),
     Mod(ModStmt),
     Tick(TickStmt)
@@ -58,7 +59,7 @@ impl StmtNode for Stmt {
             Self::Define(define) => define.accept(visitor),
             Self::If(ifstmt) => ifstmt.accept(visitor),
             Self::Loop(loopstmt) => loopstmt.accept(visitor),
-            Self::Use(usestmt) => usestmt.accept(visitor),
+            Self::Import(stmt) => stmt.accept(visitor),
             Self::Mod(modstmt) => modstmt.accept(visitor),
             Self::Asm(asmstmt) => asmstmt.accept(visitor),
             Self::Tick(tickstmt) => tickstmt.accept(visitor),
@@ -324,13 +325,15 @@ impl StmtNode for TickStmt {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UseStmt {
-    pub token: Token,
+    pub module: Token,
+    pub words: Vec<Token>
 }
 
 impl UseStmt {
-    pub fn new(token: Token) -> Self {
+    pub fn new(module: Token, words: Vec<Token>) -> Self {
         Self {
-            token,
+            module,
+            words
         }
     }
 }
@@ -341,7 +344,7 @@ impl StmtNode for UseStmt {
     }
 
     fn token(&self) -> Token {
-        self.token.clone()
+        self.module.clone()
     }
 }
 
