@@ -142,6 +142,7 @@ impl Compiler {
         }
         cstr = cstr.replace("__WORD__", &Dictionary::get_full_name(&token.lexeme,
                 &self.mod_name).replace("::", "__"));
+        cstr = cstr.replace("__LINE__", &token.line.to_string());
 
         Ok(Compiled::new(cstr.into_bytes()))
     }
