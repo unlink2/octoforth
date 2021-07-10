@@ -14,6 +14,7 @@ It comes with no built-in stdlib and is mainly intended to be used for 8 bit sys
     - Defining an inlined word
     - Defining a constant
     - Type annotation
+    - Import, Use and Mod
 - [License](#License)
 - [Contributing](#Contributing)
 
@@ -122,6 +123,28 @@ how data is arranged.
 :i8 1 :i16 257
 ```
 This will push a 8-bit and 16-bit integer to the stack.
+
+## Import, Use and Mod
+To import another file use the `:import` word.
+```
+:import "path/to/file.fth"
+```
+
+To change a file's namespace use `:mod`.
+
+```
+:mod my_module
+```
+To call a word in a module do this:
+```
+my_module::word
+```
+
+Or bring it to the local scope with `:use`
+
+```
+:use my_mod word1 word2 ;
+```
 
 ## License
 
