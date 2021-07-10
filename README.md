@@ -2,20 +2,156 @@
 
 Octoforth is a simple single-shot forth compiler.
 It comes with no built-in stdlib and is mainly intended to be used for 8 bit systems.
-By defining words that map to an `:asm` block it is possible to transpile the language
-to any target assembler.
 
-# TODO
+## Table of content
 
-- Documentation for default words and constructs
-- remove most .clone calls
-- add failure tests for compilation
-- proper cli
-- proper repl
-- include const words in asm blocks
-- optimize code (e.g. push and pull can be optimized away if they follow each other)
-  this should be done with a simple static analysis and special words that
-  execute operations that can be optimized. this should only apply when -o1 is set
-  another easy optimization is to treat '@' and '!' in a special way
-  if they have a constant in front of them we can do an immediate load
-  instead of loading from a realtive address e.g. on 6502
+- [Installation](#Installation)
+- [Usage](#Usage)
+- [Syntax](#Syntax)
+    - Built-in words
+    - Words required for compilation
+    - Defining a word
+    - Defining an inlined word
+    - Defining a constant
+    - Type annotation
+    - Import, Use and Mod
+- [License](#License)
+- [Contributing](#Contributing)
+
+## Installation
+
+This program requires the latest version of Rust.
+To install octoforth simplt clone the rebo and run:
+
+```sh
+cargo install --path ./client
+```
+
+## Usage
+
+Basic command line usage:
+
+```sh
+octoforthc <input> [output]
+```
+
+## Syntax
+
+### Built-in Words
+
+Some words are built in to make compiling easier.
+Those built-in words usually call internal words that can be custom-defined in the stdlib.
+In those custom words the variables `__ARG__`, `__WORD__` and `__LINE__` are replaced accordingly.
+Those words are:
+
+### if, else and then
+
+If statements are built-in and call the words ```___ifelse```, ```___if``` and ```__then``` internally.
+Example:
+```
+1 if 1 then # if case
+0 if 1 else 2 then # else case
+```
+
+### loop and until
+
+Loop and until call ```__loop``` and ```_until``` respectively.
+Example:
+```
+loop 1 until # this is an infite loop
+```
+
+## Words required for compilation
+The following words are required for compilation in most cases.
+- `push_default` (The default push case when no type-hint is present)
+- `push_i8`
+- `push_i16`
+- `push_i32`
+- `push_i64`
+- `pull_i8`
+- `pull_i16`
+- `pull_i32`
+- `pull_i64`
+- `__loop`
+- `__until`
+- `__if`
+- `__ifelse`
+- `__else`
+- `call`
+- `compile`
+- `return`
+
+All other words may be implemented only if required.
+The compiler will never call anything but those words above automatically.
+
+## Defining a Word
+
+Defining a word is simple:
+```
+: myword :asm "lda #$100 ;"
+```
+
+The :asm directive can be used to output assembly code. A word can consit of any combination of
+other words or directives.
+```
+: myword2 myword 1 pull8 ;
+```
+
+## Defining an inline Word
+
+Inline words are not called, but rather copied directly into the code every time they are used.
+
+```
+:i +1 :asm "clc\nadc #$01" ;
+```
+
+## Defining a constant
+
+Constants are never actually output into the code. They serve as text-representations of values.
+Constants can also evaluate math expressions. They use the same forth syntax as the rest of the language.
+The item on top of the stack will be the constant's value.
+```
+:c constant 100 50 + ; # constant is 150
+```
+
+## Type annotation
+Sometimes it might be useful to have control over how values are pushed to the stack.
+This is where type annotations come in handy.
+Generally this forth has no type-system or even stack protection, but it gives you control over
+how data is arranged.
+```
+:i8 1 :i16 257
+```
+This will push a 8-bit and 16-bit integer to the stack.
+
+## Import, Use and Mod
+To import another file use the `:import` word.
+```
+:import "path/to/file.fth"
+```
+
+To change a file's namespace use `:mod`.
+
+```
+:mod my_module
+```
+To call a word in a module do this:
+```
+my_module::word
+```
+
+Or bring it to the local scope with `:use`
+
+```
+:use my_mod word1 word2 ;
+```
+
+## License
+
+This program is distributed under the terms of the MIT License.
+
+## Contributing
+
+All contributions are welcome.
+Both pull requests and issue reports are always appreciated.
+Please make sure that all existing tests pass before submitting a pull request.
