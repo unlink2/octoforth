@@ -44,6 +44,7 @@ pub enum Stmt {
     Define(DefineStmt),
     If(IfStmt),
     Loop(LoopStmt),
+    Import(ImportStmt),
     Use(UseStmt),
     Asm(AsmStmt),
     Mod(ModStmt),
@@ -58,10 +59,11 @@ impl StmtNode for Stmt {
             Self::Define(define) => define.accept(visitor),
             Self::If(ifstmt) => ifstmt.accept(visitor),
             Self::Loop(loopstmt) => loopstmt.accept(visitor),
-            Self::Use(usestmt) => usestmt.accept(visitor),
+            Self::Import(stmt) => stmt.accept(visitor),
             Self::Mod(modstmt) => modstmt.accept(visitor),
             Self::Asm(asmstmt) => asmstmt.accept(visitor),
-            Self::Tick(tickstmt) => tickstmt.accept(visitor)
+            Self::Tick(tickstmt) => tickstmt.accept(visitor),
+            Self::Use(stmt) => stmt.accept(visitor)
         }
     }
 }
@@ -80,10 +82,11 @@ pub trait StmtVisitor {
     fn visit_define(&mut self, stmt: &mut DefineStmt) -> BoxResult<Compiled>;
     fn visit_if(&mut self, stmt: &mut IfStmt) -> BoxResult<Compiled>;
     fn visit_loop(&mut self, stmt: &mut LoopStmt) -> BoxResult<Compiled>;
-    fn visit_use(&mut self, stmt: &mut UseStmt) -> BoxResult<Compiled>;
+    fn visit_impoprt(&mut self, stmt: &mut ImportStmt) -> BoxResult<Compiled>;
     fn visit_mod(&mut self, stmt: &mut ModStmt) -> BoxResult<Compiled>;
     fn visit_asm(&mut self, stmt: &mut AsmStmt) -> BoxResult<Compiled>;
     fn visit_tick(&mut self, stmt: &mut TickStmt) -> BoxResult<Compiled>;
+    fn visit_use(&mut self, stmt: &mut UseStmt) -> BoxResult<Compiled>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -248,12 +251,12 @@ impl StmtNode for AsmStmt {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct UseStmt {
+pub struct ImportStmt {
     pub token: Token,
     pub path: Object,
 }
 
-impl UseStmt {
+impl ImportStmt {
     pub fn new(path: Object, token: Token) -> Self {
         Self {
             token,
@@ -262,9 +265,9 @@ impl UseStmt {
     }
 }
 
-impl StmtNode for UseStmt {
+impl StmtNode for ImportStmt {
     fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<Compiled> {
-        return visitor.visit_use(self);
+        return visitor.visit_impoprt(self);
     }
 
     fn token(&self) -> Token {
@@ -319,3 +322,29 @@ impl StmtNode for TickStmt {
         self.token.clone()
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UseStmt {
+    pub module: Token,
+    pub words: Vec<Token>
+}
+
+impl UseStmt {
+    pub fn new(module: Token, words: Vec<Token>) -> Self {
+        Self {
+            module,
+            words
+        }
+    }
+}
+
+impl StmtNode for UseStmt {
+    fn accept(&mut self, visitor: &mut dyn StmtVisitor) -> BoxResult<Compiled> {
+        return visitor.visit_use(self);
+    }
+
+    fn token(&self) -> Token {
+        self.module.clone()
+    }
+}
+

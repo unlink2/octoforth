@@ -27,6 +27,7 @@ impl Scanner {
         keywords.insert(":i".to_string(), TokenType::StartInlineDefine);
         keywords.insert(":c".to_string(), TokenType::StartConstDefine);
         keywords.insert(":asm".to_string(), TokenType::Asm);
+        keywords.insert(":import".to_string(), TokenType::Import);
         keywords.insert(":use".to_string(), TokenType::Use);
         keywords.insert(":mod".to_string(), TokenType::Mod);
 
@@ -293,9 +294,7 @@ impl Scanner {
 
     fn get_num(&mut self, prefix: &str, start_offset: usize, token_type: TokenType, radix: u32) -> BoxResult<Token> {
         // advance to next space, tab or new line
-        while (self.peek() != ' '
-            && self.peek() != '\t'
-            && self.peek() != '\n')
+        while !Self::is_ignored(self.peek())
             && !self.is_at_end() {
             self.advance();
         }
@@ -381,6 +380,14 @@ impl Scanner {
 
     fn is_at_end(&mut self) -> bool {
         self.current >= self.source.len()
+    }
+
+    fn is_ignored(c: char) -> bool {
+        c == ' '
+            || c == '\t'
+            || c == '\n'
+            || c == '('
+            || c == ')'
     }
 
     fn is_alpha(c: char) -> bool {
@@ -551,6 +558,29 @@ mod tests {
                         7,
                         "")]);
     }
+
+    #[test]
+    fn it_should_scan_decimal_numbers_paren() {
+        let mut scanner = Scanner::new("(123)", "");
+
+        let tokens = scanner.scan().unwrap();
+
+        assert_eq!(tokens, vec![Token::new(
+                        TokenType::Number,
+                        Object::Number(123),
+                        "123",
+                        1,
+                        1,
+                        ""),
+                    Token::new(
+                        TokenType::EndOfFile,
+                        Object::Nil,
+                        "",
+                        1,
+                        5,
+                        "")]);
+    }
+
 
     #[test]
     fn it_should_scan_float_numbers() {

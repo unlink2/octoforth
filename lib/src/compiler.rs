@@ -13,6 +13,7 @@ use super::filesystem::*;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use super::optimizer::Optimizer;
 
 pub struct Compiler {
     stmts: Vec<Stmt>,
@@ -28,7 +29,8 @@ pub struct Compiler {
 
     parent_dir: PathBuf,
 
-    halt: bool
+    halt: bool,
+    olevel: usize
 }
 
 impl Compiler {
@@ -58,11 +60,16 @@ impl Compiler {
             filesystem: Box::new(LocalFileSystem),
             module_tracker: Rc::new(RefCell::new(HashMap::new())),
             parent_dir: Path::new(path).parent().unwrap_or(Path::new(path)).to_path_buf(),
-            halt: false
+            halt: false,
+            olevel: 1
         })
     }
 
     pub fn compile(&mut self) -> Result<Vec<Compiled>, ErrorList> {
+        for _ in [0..self.olevel] {
+            Optimizer::optimize(&mut self.stmts);
+        }
+
         let mut output = vec![];
         let mut errors = vec![];
 
@@ -117,7 +124,7 @@ impl Compiler {
     /// know how to assemble it.
     fn call_word(&mut self, mut token: Token, name: &str, object: &Object) -> BoxResult<Compiled> {
         token.lexeme = name.into();
-        let mut call_obj = self.dictionary.get_any(&token, vec![&None, &self.mod_name])?;
+        let mut call_obj = self.dictionary.get_any(&token, self.build_imports(&token.lexeme))?;
         let compiled = match &mut call_obj {
             Object::Callable(c) => {
                 c.compile(self, &token)?
@@ -128,15 +135,31 @@ impl Compiler {
         // apply constants
         let mut cstr = str::from_utf8(&compiled.data)?.to_string();
         match object {
-            Object::Callable(_) | Object::Word(_) => cstr = cstr.replace("__ARG__",
-                &Dictionary::get_full_name(&object.to_string(),
-                &self.mod_name).replace("::", "__mod__")),
+            Object::Callable(_) | Object::Word(_) => {
+                let mut tmptoken = token.clone();
+                tmptoken.lexeme = object.to_string();
+
+                cstr = cstr.replace("__ARG__",
+                &self.dictionary.resolve_full_name(&tmptoken,
+                    self.build_imports(&object.to_string()),
+                    &self.mod_name)
+                .replace("::", "__mod__"))
+            },
             _ => cstr = cstr.replace("__ARG__", &object.to_string())
         }
-        cstr = cstr.replace("__WORD__", &Dictionary::get_full_name(&token.lexeme,
-                &self.mod_name).replace("::", "__"));
+        cstr = cstr.replace("__WORD__",
+            &self.dictionary.resolve_full_name(&token,
+                self.build_imports(&token.lexeme),
+                &self.mod_name))
+            .replace("::", "__");
+        cstr = cstr.replace("__LINE__", &token.line.to_string());
 
         Ok(Compiled::new(cstr.into_bytes()))
+    }
+
+    /// creates an imported module list based on the requested token
+    fn build_imports(&self, _name: &str) -> Vec<&Option<String>> {
+        vec![&None, &self.mod_name]
     }
 }
 
@@ -153,6 +176,7 @@ impl StmtVisitor for Compiler {
                     },
                     DefineMode::Regular => {
                         // arg should be the called word
+                        // TODO we need the fully qualified name here
                         return self.call_word(stmt.token(), "call", &Object::Word(stmt.token().lexeme.clone()));
                     },
                     DefineMode::Constant => {
@@ -283,7 +307,7 @@ impl StmtVisitor for Compiler {
         return Ok(compiled);
     }
 
-    fn visit_use(&mut self, stmt: &mut UseStmt) -> BoxResult<Compiled> {
+    fn visit_impoprt(&mut self, stmt: &mut ImportStmt) -> BoxResult<Compiled> {
         // compile a module, get all the code and
         // return the compilation output
         // merge dictionaries
@@ -318,6 +342,17 @@ impl StmtVisitor for Compiler {
         }
     }
 
+    fn visit_use(&mut self, stmt: &mut UseStmt) -> BoxResult<Compiled> {
+        let search_module = &Some(stmt.module.lexeme.clone());
+
+        // re-define all words as non-prefixed versions
+        for word in &stmt.words[..] {
+            self.dictionary.alias(&word.lexeme, search_module);
+        }
+
+        Ok(Compiled::new(vec![]))
+    }
+
     fn visit_mod(&mut self, stmt: &mut ModStmt) -> BoxResult<Compiled> {
         self.mod_name = Some(stmt.name.lexeme.clone());
         Ok(Compiled::new(vec![]))
@@ -347,7 +382,7 @@ impl ExprVisitor for Compiler {
     }
 
     fn visit_word(&mut self, expr: &mut WordExpr) -> BoxResult<Object> {
-        self.dictionary.get_any(&expr.name, vec![&None, &self.mod_name])
+        self.dictionary.get_any(&expr.name, self.build_imports(&expr.name.lexeme))
     }
 
     fn visit_unary(&mut self, expr: &mut UnaryExpr) -> BoxResult<Object> {
@@ -492,7 +527,7 @@ mod tests {
         let output = Compiled::flatten(result).unwrap();
 
         assert_eq!(output,
-            "arg: no_mod word: compile\nnomod\nrts\n\narg: Tests__mod__mod word: Tests__compile\nmod\nrts\n\n"
+            "arg: no_mod word: compile\nnomod\nrts\n\narg: Tests__mod__mod word: compile\nmod\nrts\n\n"
             .to_string()) ;
     }
 
@@ -554,6 +589,42 @@ mod tests {
         let output = Compiled::flatten(result).unwrap();
 
         assert_eq!(output, "lda 257i16 \nlda 512i16 \nlda 255 \n"
+            .to_string()) ;
+    }
+
+    #[test]
+    fn it_should_use_module_qualifiest_when_using() {
+        let mut compiler = Compiler::new("
+            :i compile :asm \"__ARG__: \" ;
+            :i call :asm \" jsr __ARG__ \" ;
+            :i return :asm \"rts \" ;
+            :i push_default :asm \"lda __ARG__ \" ;
+            :i push_i16 :asm \"lda __ARG__i16 \" ;
+
+            :mod Test
+            : a 1 ;
+            : b 2 ;
+            : c 3 ;
+
+            :mod Other
+            :use Test a c ;
+
+            : d 4 ;
+
+            Test::a
+            Test::b
+            Test::c
+            Other::d
+
+            a
+            c
+            d
+            ", "").unwrap();
+        let result = compiler.compile().unwrap();
+        let output = Compiled::flatten(result).unwrap();
+
+        assert_eq!(output,
+            "Test__mod__a: lda 1 rts \nTest__mod__b: lda 2 rts \nTest__mod__c: lda 3 rts \nOther__mod__d: lda 4 rts \n jsr Test__mod__a \n jsr Test__mod__b \n jsr Test__mod__c \n jsr Other__mod__d \n jsr Test__mod__a \n jsr Test__mod__c \n jsr Other__mod__d \n"
             .to_string()) ;
     }
 }

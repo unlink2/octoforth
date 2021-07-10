@@ -6,6 +6,7 @@ use super::token::*;
 #[derive(Clone)]
 pub struct Dictionary {
     pub words: HashMap<String, Object>,
+    pub alias: HashMap<String, String>,
     pub parent: Option<Box<Dictionary>>
 }
 
@@ -17,6 +18,7 @@ impl Dictionary {
     pub fn with(parent: Option<Box<Dictionary>>) -> Self {
         Self {
             words: HashMap::new(),
+            alias: HashMap::new(),
             parent
         }
     }
@@ -45,6 +47,21 @@ impl Dictionary {
         self.words.insert(full_name, value.clone());
     }
 
+    pub fn alias(&mut self, name: &str, prefix: &Option<String>) {
+        let full_name = Self::get_full_name(name, prefix);
+        self.alias.insert(name.into(), full_name);
+    }
+
+    pub fn resolve_full_name(&self, name: &Token, valid: Vec<&Option<String>>, default: &Option<String>) -> String {
+        for prefix in valid {
+            match self.get_name_and_obj(name, prefix) {
+                Ok(obj) => return obj.0,
+                _ => {}
+            }
+        }
+        Self::get_full_name(&name.lexeme, default)
+    }
+
     pub fn get_any(&self, name: &Token, valid: Vec<&Option<String>>) -> BoxResult<Object> {
         for prefix in valid {
             match self.get(name, prefix) {
@@ -56,16 +73,24 @@ impl Dictionary {
     }
 
     pub fn get(&self, name: &Token, prefix: &Option<String>) -> BoxResult<Object> {
-        let full_name = Self::get_full_name(&name.lexeme, prefix);
+        Ok(self.get_name_and_obj(name, prefix)?.1)
+    }
+
+    fn get_name_and_obj(&self, name: &Token, prefix: &Option<String>) -> BoxResult<(String, Object)> {
+        let mut full_name = Self::get_full_name(&name.lexeme, prefix);
+
+        if self.alias.contains_key(&full_name) {
+            full_name = self.alias.get(&full_name).unwrap().clone();
+        }
 
         if !self.words.contains_key(&full_name) {
             match &self.parent {
-                Some(parent) => return parent.get(name, prefix),
+                Some(parent) => return parent.get_name_and_obj(name, prefix),
                 _ => return Err(Box::new(ExecError::new(ErrorType::UndefinedWord, name.clone())))
             }
         } else {
             match self.words.get(&full_name) {
-                Some(obj) => return Ok(obj.clone()),
+                Some(obj) => return Ok((full_name, obj.clone())),
                 _ => return Err(Box::new(ExecError::new(ErrorType::UndefinedWord, name.clone())))
             }
         }

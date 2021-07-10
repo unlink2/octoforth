@@ -11,3 +11,4 @@ pub mod callable;
 pub mod interpreter;
 pub mod builtins;
 pub mod filesystem;
+pub mod optimizer;
