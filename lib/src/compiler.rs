@@ -136,14 +136,22 @@ impl Compiler {
         let mut cstr = str::from_utf8(&compiled.data)?.to_string();
         match object {
             Object::Callable(_) | Object::Word(_) => {
+                let mut tmptoken = token.clone();
+                tmptoken.lexeme = object.to_string();
+
                 cstr = cstr.replace("__ARG__",
-                &Dictionary::get_full_name(&object.to_string(),
-                &None).replace("::", "__mod__"))
+                &self.dictionary.resolve_full_name(&tmptoken,
+                    self.build_imports(&object.to_string()),
+                    &self.mod_name)
+                .replace("::", "__mod__"))
             },
             _ => cstr = cstr.replace("__ARG__", &object.to_string())
         }
-        cstr = cstr.replace("__WORD__", &Dictionary::get_full_name(&token.lexeme,
-                &None).replace("::", "__"));
+        cstr = cstr.replace("__WORD__",
+            &self.dictionary.resolve_full_name(&token,
+                self.build_imports(&token.lexeme),
+                &self.mod_name))
+            .replace("::", "__");
         cstr = cstr.replace("__LINE__", &token.line.to_string());
 
         Ok(Compiled::new(cstr.into_bytes()))
@@ -339,8 +347,7 @@ impl StmtVisitor for Compiler {
 
         // re-define all words as non-prefixed versions
         for word in &stmt.words[..] {
-            let definition = self.dictionary.get(word, search_module)?;
-            self.dictionary.define(&word.lexeme, &None, &definition);
+            self.dictionary.alias(&word.lexeme, search_module);
         }
 
         Ok(Compiled::new(vec![]))
@@ -520,7 +527,7 @@ mod tests {
         let output = Compiled::flatten(result).unwrap();
 
         assert_eq!(output,
-            "arg: no_mod word: compile\nnomod\nrts\n\narg: Tests__mod__mod word: Tests__compile\nmod\nrts\n\n"
+            "arg: no_mod word: compile\nnomod\nrts\n\narg: Tests__mod__mod word: compile\nmod\nrts\n\n"
             .to_string()) ;
     }
 
@@ -588,7 +595,7 @@ mod tests {
     #[test]
     fn it_should_use_module_qualifiest_when_using() {
         let mut compiler = Compiler::new("
-            :i compile :asm \"__ARG__ \" ;
+            :i compile :asm \"__ARG__: \" ;
             :i call :asm \" jsr __ARG__ \" ;
             :i return :asm \"rts \" ;
             :i push_default :asm \"lda __ARG__ \" ;
@@ -601,17 +608,23 @@ mod tests {
 
             :mod Other
             :use Test a c ;
+
+            : d 4 ;
+
             Test::a
             Test::b
             Test::c
+            Other::d
 
             a
             c
+            d
             ", "").unwrap();
         let result = compiler.compile().unwrap();
         let output = Compiled::flatten(result).unwrap();
 
-        assert_eq!(output, ""
+        assert_eq!(output,
+            "Test__mod__a: lda 1 rts \nTest__mod__b: lda 2 rts \nTest__mod__c: lda 3 rts \nOther__mod__d: lda 4 rts \n jsr Test__mod__a \n jsr Test__mod__b \n jsr Test__mod__c \n jsr Other__mod__d \n jsr Test__mod__a \n jsr Test__mod__c \n jsr Other__mod__d \n"
             .to_string()) ;
     }
 }
