@@ -7,6 +7,43 @@ use super::dictionary::*;
 use super::token::*;
 use super::builtins::*;
 use super::callable::*;
+use std::rc::Rc;
+use std::cell::RefCell;
+
+#[derive(Clone)]
+pub struct InterpreterStack {
+    pub stack: Rc<RefCell<Vec<Object>>>
+}
+
+impl InterpreterStack {
+    pub fn new() -> Self {
+        Self {
+            stack: Rc::new(RefCell::new(vec![]))
+        }
+    }
+
+    pub fn pop(&mut self, token: &Token) -> BoxResult<Object> {
+        match self.stack.as_ref().borrow_mut().pop() {
+            Some(obj) => Ok(obj),
+            _ => Err(Box::new(ExecError::new(ErrorType::StackUnderflow, token.clone())))
+        }
+    }
+
+    pub fn peek(&self, token: &Token) -> BoxResult<Object> {
+        match self.stack.as_ref().borrow_mut().last() {
+            Some(obj) => Ok(obj.clone()),
+            _ => Err(Box::new(ExecError::new(ErrorType::StackUnderflow, token.clone())))
+        }
+    }
+
+    pub fn push(&mut self, obj: Object) {
+        self.stack.as_ref().borrow_mut().push(obj)
+    }
+
+    pub fn len(&self) -> usize {
+        self.stack.as_ref().borrow_mut().len()
+    }
+}
 
 /***
  * This interpreter is responsible
@@ -15,7 +52,7 @@ use super::callable::*;
  */
 pub struct Interpreter {
     stmts: Vec<Stmt>,
-    pub stack: Vec<Object>,
+    pub stack: InterpreterStack,
     // contains words and compile-time words
     dictionary: Box<Dictionary>,
 
@@ -51,7 +88,7 @@ impl Interpreter {
         Ok(Self {
             stmts,
             dictionary: Self::builtins(),
-            stack: vec![],
+            stack: InterpreterStack::new(),
             mod_name: None,
             halt: false
         })
@@ -61,24 +98,18 @@ impl Interpreter {
         Self {
             stmts,
             dictionary: Self::builtins(),
-            stack: vec![],
+            stack: InterpreterStack::new(),
             mod_name: None,
             halt: false
         }
     }
 
     pub fn pop(&mut self, token: &Token) -> BoxResult<Object> {
-        match self.stack.pop() {
-            Some(obj) => Ok(obj),
-            _ => Err(Box::new(ExecError::new(ErrorType::StackUnderflow, token.clone())))
-        }
+        self.stack.pop(token)
     }
 
     pub fn peek(&self, token: &Token) -> BoxResult<Object> {
-        match self.stack.last() {
-            Some(obj) => Ok(obj.clone()),
-            _ => Err(Box::new(ExecError::new(ErrorType::StackUnderflow, token.clone())))
-        }
+        self.stack.peek(token)
     }
 
     pub fn push(&mut self, obj: Object) {
@@ -256,7 +287,7 @@ mod tests {
 
         // value on stack should be Some(3)
         assert_eq!(interpreter.stack.len(), 1);
-        assert_eq!(interpreter.stack.pop(), Some(Object::Number(3)));
+        assert_eq!(interpreter.stack.stack.borrow_mut().pop(), Some(Object::Number(3)));
     }
 
     #[test]
@@ -265,7 +296,7 @@ mod tests {
         let _ = interpreter.interprete().unwrap();
 
         assert_eq!(interpreter.stack.len(), 1);
-        assert_eq!(interpreter.stack.pop(), Some(Object::Number(-4)));
+        assert_eq!(interpreter.stack.stack.borrow_mut().pop(), Some(Object::Number(-4)));
     }
 
     #[test]
@@ -274,7 +305,7 @@ mod tests {
         let _ = interpreter.interprete().unwrap();
 
         assert_eq!(interpreter.stack.len(), 1);
-        assert_eq!(interpreter.stack.pop(), Some(Object::Number(-4)));
+        assert_eq!(interpreter.stack.stack.borrow_mut().pop(), Some(Object::Number(-4)));
     }
 
     #[test]
@@ -283,7 +314,7 @@ mod tests {
         let _ = interpreter.interprete().unwrap();
 
         assert_eq!(interpreter.stack.len(), 1);
-        assert_eq!(interpreter.stack.pop(), Some(Object::Number(2)));
+        assert_eq!(interpreter.stack.stack.borrow_mut().pop(), Some(Object::Number(2)));
     }
 
     #[test]
@@ -300,7 +331,7 @@ mod tests {
         let _ = interpreter.interprete().unwrap();
 
         assert_eq!(interpreter.stack.len(), 1);
-        assert_eq!(interpreter.stack.pop(), Some(Object::Number(2)));
+        assert_eq!(interpreter.stack.stack.borrow_mut().pop(), Some(Object::Number(2)));
     }
 
     #[test]
@@ -309,7 +340,7 @@ mod tests {
         let _ = interpreter.interprete().unwrap();
 
         assert_eq!(interpreter.stack.len(), 1);
-        assert_eq!(interpreter.stack.pop(), Some(Object::Number(3)));
+        assert_eq!(interpreter.stack.stack.borrow_mut().pop(), Some(Object::Number(3)));
     }
 
     #[test]
@@ -318,7 +349,7 @@ mod tests {
         let _ = interpreter.interprete().unwrap();
 
         assert_eq!(interpreter.stack.len(), 1);
-        assert_eq!(interpreter.stack.pop(), Some(Object::Number(0)));
+        assert_eq!(interpreter.stack.stack.borrow_mut().pop(), Some(Object::Number(0)));
     }
 
     #[test]
