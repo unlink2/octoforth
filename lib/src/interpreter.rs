@@ -128,7 +128,7 @@ impl StmtVisitor for Interpreter {
         match &mut object {
             Object::Callable(c) => {
                 // call the word in interpreted mode
-                return Ok(c.call(self, &expr.expr.token())?);
+                return Ok(c.call(self, &expr.expr.token(), &Object::Nil)?);
             },
             n => {
                 // in interpreter mode numbers simply are pushed

@@ -9,7 +9,14 @@ use std::str;
 #[derive(Clone)]
 pub struct Compiled {
     pub data: Vec<u8>,
-    pub result: Object // compiled may return an object if it wishes
+
+    // compiled may return an object if it wishes
+    // this is mainly intended to control
+    // runtime behaviour for the compiler (e.g. should
+    // __if code be compiled or not?; should loop code be
+    // run N times or not?)
+    // return Object::Null to ignore
+    pub result: Object
 }
 
 impl Compiled {

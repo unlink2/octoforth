@@ -13,7 +13,7 @@ use super::token::*;
 pub struct Add;
 
 impl Callable for Add {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 
@@ -30,7 +30,7 @@ impl Callable for Add {
 pub struct Sub;
 
 impl Callable for Sub {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 
@@ -47,7 +47,7 @@ impl Callable for Sub {
 pub struct Mul;
 
 impl Callable for Mul {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 
@@ -64,7 +64,7 @@ impl Callable for Mul {
 pub struct Div;
 
 impl Callable for Div {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 
@@ -86,7 +86,7 @@ impl Callable for Div {
 pub struct Mod;
 
 impl Callable for Mod {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 
@@ -108,7 +108,7 @@ impl Callable for Mod {
 pub struct And;
 
 impl Callable for And {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 
@@ -126,7 +126,7 @@ impl Callable for And {
 pub struct Or;
 
 impl Callable for Or {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 
@@ -144,7 +144,7 @@ impl Callable for Or {
 pub struct Not;
 
 impl Callable for Not {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
 
         match y {
@@ -161,7 +161,7 @@ impl Callable for Not {
 pub struct Xor;
 
 impl Callable for Xor {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 
@@ -179,7 +179,7 @@ impl Callable for Xor {
 pub struct Dup;
 
 impl Callable for Dup {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let x = interpreter.peek(token)?;
 
         match x {
@@ -196,7 +196,7 @@ impl Callable for Dup {
 pub struct DropTop;
 
 impl Callable for DropTop {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let _x = interpreter.pop(token)?;
 
         Ok(Compiled::new(vec![]))
@@ -207,7 +207,7 @@ impl Callable for DropTop {
 pub struct Equal;
 
 impl Callable for Equal {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 
@@ -221,7 +221,7 @@ impl Callable for Equal {
 pub struct NotEqual;
 
 impl Callable for NotEqual {
-    fn call(&mut self, interpreter: &mut Interpreter, token: &Token) -> BoxResult<Compiled> {
+    fn call(&mut self, interpreter: &mut Interpreter, token: &Token, _object: &Object) -> BoxResult<Compiled> {
         let y = interpreter.pop(token)?;
         let x = interpreter.pop(token)?;
 

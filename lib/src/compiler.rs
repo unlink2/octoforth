@@ -135,7 +135,7 @@ impl Compiler {
         let mut call_obj = self.dictionary.get_any(&token, self.build_imports(&token.lexeme))?;
         let compiled = match &mut call_obj {
             Object::Callable(c) => {
-                c.compile(self, &token)?
+                c.compile(self, &token, object)?
             },
             _ => return Err(Box::new(ExecError::new(ErrorType::UnsupportedObject, token)))
         };
@@ -180,7 +180,7 @@ impl StmtVisitor for Compiler {
                 match c.mode() {
                     DefineMode::Inline => {
                         // call the word in interpreted mode
-                        return Ok(c.compile(self, &stmt.expr.token())?);
+                        return Ok(c.compile(self, &stmt.expr.token(), &Object::Nil)?);
                     },
                     DefineMode::Regular => {
                         // arg should be the called word
