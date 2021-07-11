@@ -53,7 +53,11 @@ impl Compiler {
     pub fn new(source: &str, path: &str) -> Result<Self, ErrorList> {
         let mut parser = Parser::new(source, path)?;
         let stmts = parser.parse()?;
-        Ok(Self {
+        Ok(Self::with(stmts, path))
+    }
+
+    pub fn with(stmts: Vec<Stmt>, path: &str) -> Self {
+        Self {
             stmts,
             dictionary: Self::builtins(),
             mod_name: None,
@@ -62,7 +66,11 @@ impl Compiler {
             parent_dir: Path::new(path).parent().unwrap_or(Path::new(path)).to_path_buf(),
             halt: false,
             olevel: 1
-        })
+        }
+    }
+
+    pub fn define_builtin(&mut self, name: &str, module: &Option<String>, callable: Object) {
+        self.dictionary.define(name, module, &callable);
     }
 
     pub fn compile(&mut self) -> Result<Vec<Compiled>, ErrorList> {
@@ -280,16 +288,24 @@ impl StmtVisitor for Compiler {
         match &mut stmt.else_block {
             Some(else_block) => {
                 // if-else
-                compiled.data.append(&mut self.call_word(token.clone(), "__ifelse", &Object::Nil)?.data);
-                compiled.data.append(&mut self.execute(&mut stmt.then_block)?.data);
+                let mut if_comp = self.call_word(token.clone(), "__ifelse", &Object::Nil)?;
+                compiled.data.append(&mut if_comp.data);
+                if if_comp.result.truthy() || if_comp.result.null() {
+                    compiled.data.append(&mut self.execute(&mut stmt.then_block)?.data);
+                }
                 compiled.data.append(&mut self.call_word(token.clone(), "__else", &Object::Nil)?.data);
-                compiled.data.append(&mut self.execute(else_block)?.data);
+                if !if_comp.result.truthy() || if_comp.result.null() {
+                    compiled.data.append(&mut self.execute(else_block)?.data);
+                }
                 compiled.data.append(&mut self.call_word(token.clone(), "__then", &Object::Nil)?.data);
             },
             _ => {
                 // if only
-                compiled.data.append(&mut self.call_word(token.clone(), "__if", &Object::Nil)?.data);
-                compiled.data.append(&mut self.execute(&mut stmt.then_block)?.data);
+                let mut if_comp = self.call_word(token.clone(), "__if", &Object::Nil)?;
+                compiled.data.append(&mut if_comp.data);
+                if if_comp.result.truthy() || if_comp.result.null() {
+                    compiled.data.append(&mut self.execute(&mut stmt.then_block)?.data);
+                }
                 compiled.data.append(&mut self.call_word(token.clone(), "__then", &Object::Nil)?.data);
             }
         }
@@ -300,9 +316,18 @@ impl StmtVisitor for Compiler {
         let mut compiled = Compiled::new(vec![]);
 
         let token = stmt.token();
-        compiled.data.append(&mut self.call_word(token.clone(), "__loop", &Object::Nil)?.data);
-        compiled.data.append(&mut self.execute(&mut stmt.block)?.data);
-        compiled.data.append(&mut self.call_word(token.clone(), "__until", &Object::Nil)?.data);
+
+        let mut loop_comp = self.call_word(token.clone(), "__loop", &Object::Nil)?;
+        compiled.data.append(&mut loop_comp.data);
+
+        loop {
+            compiled.data.append(&mut self.execute(&mut stmt.block)?.data);
+            loop_comp = self.call_word(token.clone(), "__until", &Object::Nil)?;
+            compiled.data.append(&mut loop_comp.data);
+            if !loop_comp.result.truthy() || loop_comp.result.null() {
+                break;
+            }
+        }
 
         return Ok(compiled);
     }

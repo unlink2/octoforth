@@ -8,7 +8,8 @@ use std::str;
 /// perform an action and returns the resulting code
 #[derive(Clone)]
 pub struct Compiled {
-    pub data: Vec<u8>
+    pub data: Vec<u8>,
+    pub result: Object // compiled may return an object if it wishes
 }
 
 impl Compiled {
@@ -33,7 +34,10 @@ impl Compiled {
     }
 
     pub fn new(data: Vec<u8>) -> Self {
-        Self {data}
+        Self {
+            data,
+            result: Object::Null
+        }
     }
 }
 

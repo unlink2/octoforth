@@ -26,6 +26,7 @@ impl TypedWord {
 
 #[derive(Debug, Clone)]
 pub enum Object {
+    Null, // internal only
     Nil,
     Number(ObjNumber),
     Real(ObjReal),
@@ -39,7 +40,7 @@ impl Object {
     pub fn truthy(&self) -> bool {
         match self {
             Object::Callable(_) => false,
-            Object::Nil => false,
+            Object::Nil | Object::Null => false,
             Object::Number(i) => *i != 0,
             Object::Real(i) => *i != 0.0,
             Object::Str(_) => true,
@@ -48,10 +49,25 @@ impl Object {
         }
     }
 
+    pub fn nil(&self) -> bool {
+        match self {
+            Object::Nil => true,
+            _ => false
+        }
+    }
+
+    pub fn null(&self) -> bool {
+        match self {
+            Object::Null => true,
+            _ => false
+        }
+    }
+
     pub fn to_string(&self) -> String {
         match self {
             Object::Callable(_) => "Callable".into(),
             Object::Nil => "nil".into(),
+            Object::Null => "null".into(),
             Object::Number(i) => format!("{}", i),
             Object::Real(i) => format!("{}", i),
             Object::Str(s) => s.clone(),
